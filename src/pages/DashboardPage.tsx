@@ -85,6 +85,16 @@ export default function DashboardPage() {
         {/* Status Toko */}
         {toko ? (
           <div className="bg-white rounded-xl p-4 border border-gray-100">
+
+            {/* Foto toko */}
+            {toko.foto_url && (
+              <img
+                src={toko.foto_url}
+                alt={toko.nama}
+                className="w-full h-32 object-cover rounded-lg mb-3"
+              />
+            )}
+
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h2 className="font-semibold text-gray-800">{toko.nama}</h2>
@@ -94,18 +104,28 @@ export default function DashboardPage() {
                 {isBuka ? 'BUKA' : 'TUTUP'}
               </span>
             </div>
+
             <button
               onClick={toggleStatus}
               className={`w-full py-2.5 rounded-lg text-sm font-medium transition ${isBuka ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-green-600 hover:bg-green-700 text-white'}`}
             >
               {isBuka ? 'Tutup Toko Sekarang' : 'Buka Toko Sekarang'}
             </button>
+
+            <button
+              onClick={() => navigate('/edit-toko')}
+              className="w-full mt-2 border border-gray-200 text-gray-600 text-sm py-2 rounded-lg hover:bg-gray-50 transition"
+            >
+              ✏️ Edit Info Toko & Foto
+            </button>
+
             <button
               onClick={() => navigate('/tambah-produk')}
               className="w-full mt-2 border border-gray-200 text-gray-600 text-sm py-2 rounded-lg hover:bg-gray-50 transition"
             >
               + Tambah Produk
             </button>
+
           </div>
         ) : (
           <div className="bg-white rounded-xl p-4 border border-gray-100 text-center">
@@ -125,6 +145,9 @@ export default function DashboardPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t flex">
         <button onClick={() => navigate('/cari')} className="flex-1 py-3 text-xs text-gray-400">
           🔍 Cari
+        </button>
+        <button onClick={() => navigate('/peta')} className="flex-1 py-3 text-xs text-gray-400">
+          🗺️ Peta
         </button>
         <button onClick={() => navigate('/dashboard')} className="flex-1 py-3 text-xs text-red-600 font-medium">
           🏪 Toko Saya

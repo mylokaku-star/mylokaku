@@ -6,6 +6,7 @@ import CariTokoPage from './pages/CariTokoPage'
 import TambahProdukPage from './pages/TambahProdukPage'
 import DetailTokoPage from './pages/DetailTokoPage'
 import PetaPage from './pages/PetaPage'
+import EditTokoPage from './pages/EditTokoPage'
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
       <Route path="/tambah-produk" element={<TambahProdukPage />} />
       <Route path="/toko/:id" element={<DetailTokoPage />} />
       <Route path="/peta" element={<PetaPage />} />
+      <Route path="/edit-toko" element={<EditTokoPage />} />
     </Routes>
   )
 }
