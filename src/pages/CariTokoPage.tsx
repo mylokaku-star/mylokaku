@@ -91,37 +91,46 @@ export default function CariTokoPage() {
         ) : (
           <div className="space-y-3">
             {filtered.map(t => (
-              <div key={t.id} className="bg-white rounded-xl border border-gray-100 p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <h3 className="font-semibold text-gray-800 text-sm">{t.nama}</h3>
-                    <span className="text-xs text-gray-400">{t.kategori}</span>
+              <div key={t.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                {t.foto_url && (
+                  <img
+                    src={t.foto_url}
+                    alt={t.nama}
+                    className="w-full h-36 object-cover"
+                  />
+                )}
+                <div className="p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <h3 className="font-semibold text-gray-800 text-sm">{t.nama}</h3>
+                      <span className="text-xs text-gray-400">{t.kategori}</span>
+                    </div>
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                      BUKA
+                    </span>
                   </div>
-                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
-                    BUKA
-                  </span>
-                </div>
-                {t.alamat && (
-                  <p className="text-xs text-gray-500 mb-2">📍 {t.alamat}</p>
-                )}
-                {t.deskripsi && (
-                  <p className="text-xs text-gray-400 mb-3 line-clamp-2">{t.deskripsi}</p>
-                )}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => navigate(`/toko/${t.id}`)}
-                    className="flex-1 border border-gray-200 text-gray-600 text-xs py-1.5 rounded-lg hover:bg-gray-50 transition"
-                  >
-                    Lihat Toko
-                  </button>
-                  {t.telepon && (
-                    <button
-                      onClick={() => hubungiWhatsapp(t.telepon, t.nama)}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs py-1.5 rounded-lg transition"
-                    >
-                      WhatsApp
-                    </button>
+                  {t.alamat && (
+                    <p className="text-xs text-gray-500 mb-2">📍 {t.alamat}</p>
                   )}
+                  {t.deskripsi && (
+                    <p className="text-xs text-gray-400 mb-3 line-clamp-2">{t.deskripsi}</p>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => navigate(`/toko/${t.id}`)}
+                      className="flex-1 border border-gray-200 text-gray-600 text-xs py-1.5 rounded-lg hover:bg-gray-50 transition"
+                    >
+                      Lihat Toko
+                    </button>
+                    {t.telepon && (
+                      <button
+                        onClick={() => hubungiWhatsapp(t.telepon, t.nama)}
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs py-1.5 rounded-lg transition"
+                      >
+                        WhatsApp
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
