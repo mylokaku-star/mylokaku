@@ -20,7 +20,6 @@ export default function DetailTokoPage() {
       .eq('id', id)
       .single()
     setToko(tokoData)
-
     const { data: produkData } = await supabase
       .from('produk')
       .select('*')
@@ -61,77 +60,78 @@ export default function DetailTokoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50 pb-24">
 
-      {/* Header */}
-      <div className="bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={() => navigate('/cari')} className="text-gray-500 hover:text-gray-800">
+      {/* Hero foto */}
+      <div className="relative">
+        {toko.foto_url ? (
+          <img src={toko.foto_url} alt={toko.nama} className="w-full h-56 object-cover" />
+        ) : (
+          <div className="w-full h-40 bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center text-6xl">🏪</div>
+        )}
+        <button
+          onClick={() => navigate('/cari')}
+          className="absolute top-4 left-4 bg-white/90 backdrop-blur text-gray-700 px-3 py-1.5 rounded-xl text-sm font-semibold shadow"
+        >
           ← Kembali
         </button>
-        <span className="font-semibold text-gray-800 truncate">{toko.nama}</span>
+        <span className={`absolute top-4 right-4 text-xs px-3 py-1.5 rounded-xl font-bold shadow ${toko.is_buka ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+          {toko.is_buka ? '🟢 BUKA' : '🔴 TUTUP'}
+        </span>
       </div>
 
-      {/* Foto toko */}
-      {toko.foto_url && (
-        <img src={toko.foto_url} alt={toko.nama} className="w-full h-48 object-cover" />
-      )}
-
-      <div className="max-w-lg mx-auto p-4 space-y-4">
+      <div className="max-w-lg mx-auto px-4 py-4 space-y-4">
 
         {/* Info Toko */}
-        <div className="bg-white rounded-xl p-4 border border-gray-100">
-          <div className="flex items-start justify-between mb-2">
-            <div>
-              <h1 className="font-semibold text-gray-800 text-lg">{toko.nama}</h1>
-              <span className="text-xs text-gray-400">{toko.kategori}</span>
-            </div>
-            <span className={`text-xs px-2 py-1 rounded-full font-medium ${toko.is_buka ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-              {toko.is_buka ? 'BUKA' : 'TUTUP'}
-            </span>
-          </div>
+        <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm">
+          <h1 className="font-extrabold text-gray-900 text-xl mb-1">{toko.nama}</h1>
+          <span className="inline-block text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded-full font-semibold mb-3">{toko.kategori}</span>
           {toko.alamat && (
-            <p className="text-sm text-gray-500 mb-2">📍 {toko.alamat}</p>
+            <p className="text-sm text-gray-500 mb-2 flex items-start gap-1">
+              <span>📍</span> {toko.alamat}
+            </p>
           )}
           {toko.deskripsi && (
-            <p className="text-sm text-gray-500 mb-3">{toko.deskripsi}</p>
+            <p className="text-sm text-gray-500 leading-relaxed">{toko.deskripsi}</p>
           )}
           {toko.telepon && (
             <button
               onClick={hubungiWhatsapp}
-              className="w-full bg-green-600 hover:bg-green-700 text-white rounded-lg py-2.5 text-sm font-medium transition"
+              className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white rounded-2xl py-3 text-sm font-bold transition shadow-sm shadow-green-100"
             >
               💬 Hubungi via WhatsApp
             </button>
           )}
         </div>
 
-        {/* Daftar Produk */}
+        {/* Produk */}
         <div>
-          <h2 className="font-semibold text-gray-700 mb-3">
-            Produk & Layanan
-            <span className="text-xs text-gray-400 font-normal ml-2">({produk.length} item)</span>
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-extrabold text-gray-900">Produk & Layanan</h2>
+            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full font-semibold">{produk.length} item</span>
+          </div>
 
           {produk.length === 0 ? (
-            <div className="bg-white rounded-xl p-6 border border-gray-100 text-center">
+            <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm text-center">
+              <span className="text-4xl mb-2 block">📦</span>
               <p className="text-gray-400 text-sm">Belum ada produk</p>
             </div>
           ) : (
             <div className="space-y-3">
               {produk.map(p => (
-                <div key={p.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                <div key={p.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
                   {p.foto_url && (
                     <img src={p.foto_url} alt={p.nama} className="w-full h-36 object-cover" />
                   )}
                   <div className="p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h3 className="font-medium text-gray-800 text-sm">{p.nama}</h3>
+                        <h3 className="font-bold text-gray-900 text-sm">{p.nama}</h3>
                         {p.deskripsi && (
-                          <p className="text-xs text-gray-400 mt-0.5">{p.deskripsi}</p>
+                          <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{p.deskripsi}</p>
                         )}
                       </div>
-                      <span className="text-sm font-semibold text-red-600 ml-3">
+                      <span className="text-sm font-extrabold text-red-600 ml-3 whitespace-nowrap">
                         {formatHarga(p.harga)}
                       </span>
                     </div>
@@ -141,21 +141,19 @@ export default function DetailTokoPage() {
             </div>
           )}
         </div>
-
       </div>
 
-      {/* Bottom WhatsApp button */}
+      {/* Bottom WhatsApp */}
       {toko.telepon && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t">
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 shadow-lg">
           <button
             onClick={hubungiWhatsapp}
-            className="w-full max-w-lg mx-auto block bg-green-600 hover:bg-green-700 text-white rounded-lg py-3 text-sm font-medium transition"
+            className="w-full max-w-lg mx-auto block bg-green-600 hover:bg-green-700 text-white rounded-2xl py-3.5 text-sm font-extrabold transition shadow-lg shadow-green-100"
           >
             💬 Hubungi via WhatsApp
           </button>
         </div>
       )}
-
     </div>
   )
 }
