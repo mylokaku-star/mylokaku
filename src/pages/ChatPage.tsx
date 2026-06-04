@@ -12,6 +12,8 @@ export default function ChatPage() {
   const [user, setUser] = useState<any>(null)
   const [isPenjual, setIsPenjual] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [pembeliList, setPembeliList] = useState<any[]>([])
+  const [selectedPembeli, setSelectedPembeli] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -31,47 +33,89 @@ export default function ChatPage() {
       .from('toko').select('*').eq('id', tokoId).single()
     setToko(tokoData)
 
-    if (tokoData?.user_id === userData.user.id) setIsPenjual(true)
+    const penjual = tokoData?.user_id === userData.user.id
+    setIsPenjual(penjual)
 
-    await loadPesan()
+    if (penjual) {
+      // Penjual: load daftar pembeli yang pernah chat
+      const { data: pesanData } = await supabase
+        .from('pesan')
+        .select('pembeli_id, pengirim_email')
+        .eq('toko_id', tokoId)
+        .not('pembeli_id', 'is', null)
+      
+      const unique: any[] = []
+      const seen = new Set()
+      pesanData?.forEach(p => {
+        if (!seen.has(p.pembeli_id)) {
+          seen.add(p.pembeli_id)
+          unique.push(p)
+        }
+      })
+      setPembeliList(unique)
+      if (unique.length > 0) {
+        setSelectedPembeli(unique[0].pembeli_id)
+        await loadPesan(unique[0].pembeli_id)
+      }
+    } else {
+      // Pembeli: load pesan milik sendiri
+      setSelectedPembeli(userData.user.id)
+      await loadPesan(userData.user.id)
+    }
+
     setLoading(false)
 
     // Realtime
+    const pembeliId = penjual ? null : userData.user.id
     const channel = supabase
-      .channel(`chat-${tokoId}`)
+      .channel(`chat-${tokoId}-${userData.user.id}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'pesan',
         filter: `toko_id=eq.${tokoId}`,
       }, payload => {
-        setPesan(prev => [...prev, payload.new])
+        const msg = payload.new as any
+        if (
+          (penjual && msg.pembeli_id === selectedPembeli) ||
+          (!penjual && msg.pembeli_id === userData.user.id)
+        ) {
+          setPesan(prev => [...prev, msg])
+        }
       })
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
   }
 
-  async function loadPesan() {
+  async function loadPesan(pembeliId: string) {
     const { data } = await supabase
       .from('pesan')
       .select('*')
       .eq('toko_id', tokoId)
+      .eq('pembeli_id', pembeliId)
       .order('created_at', { ascending: true })
     setPesan(data || [])
   }
 
   async function kirimPesan() {
     if (!input.trim()) return
+    const pembeliId = isPenjual ? selectedPembeli : user.id
     const { error } = await supabase.from('pesan').insert({
       toko_id: tokoId,
       pengirim_id: user.id,
       pengirim_email: user.email,
+      pembeli_id: pembeliId,
       isi: input.trim(),
       is_penjual: isPenjual,
     })
     if (error) { toast.error('Gagal kirim pesan') }
     else { setInput('') }
+  }
+
+  async function pilihPembeli(pembeliId: string) {
+    setSelectedPembeli(pembeliId)
+    await loadPesan(pembeliId)
   }
 
   function formatWaktu(timestamp: string) {
@@ -92,7 +136,7 @@ export default function ChatPage() {
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-4 py-4 flex items-center gap-3 sticky top-0 z-10 shadow-sm">
         <button
-          onClick={() => navigate(`/toko/${tokoId}`)}
+          onClick={() => navigate(isPenjual ? '/dashboard' : `/toko/${tokoId}`)}
           className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-200 transition"
         >←</button>
         <div className="flex items-center gap-3 flex-1">
@@ -101,13 +145,30 @@ export default function ChatPage() {
           </div>
           <div>
             <p className="font-extrabold text-gray-900 text-sm">{toko?.nama}</p>
-            <p className="text-xs text-gray-400">{isPenjual ? 'Kamu adalah penjual' : 'Chat dengan penjual'}</p>
+            <p className="text-xs text-gray-400">
+              {isPenjual ? `${pembeliList.length} percakapan` : 'Chat dengan penjual'}
+            </p>
           </div>
         </div>
         <span className={`text-xs px-2 py-1 rounded-xl font-bold ${toko?.is_buka ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
           {toko?.is_buka ? '🟢 Buka' : '🔴 Tutup'}
         </span>
       </div>
+
+      {/* List pembeli (khusus penjual) */}
+      {isPenjual && pembeliList.length > 0 && (
+        <div className="bg-white border-b border-gray-100 px-4 py-2 flex gap-2 overflow-x-auto">
+          {pembeliList.map(p => (
+            <button
+              key={p.pembeli_id}
+              onClick={() => pilihPembeli(p.pembeli_id)}
+              className={`text-xs px-3 py-1.5 rounded-xl whitespace-nowrap font-semibold border-2 transition ${selectedPembeli === p.pembeli_id ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-100'}`}
+            >
+              👤 {p.pengirim_email?.split('@')[0]}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Pesan */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 pb-24">
@@ -116,7 +177,7 @@ export default function ChatPage() {
             <span className="text-5xl mb-3 block">💬</span>
             <p className="text-gray-500 font-semibold text-sm">Belum ada pesan</p>
             <p className="text-gray-400 text-xs mt-1">
-              {isPenjual ? 'Tunggu pesan dari pembeli' : 'Tanya ketersediaan produk atau jam buka'}
+              {isPenjual ? 'Belum ada pesan dari pembeli ini' : 'Tanya ketersediaan produk atau jam buka'}
             </p>
           </div>
         ) : (
@@ -124,7 +185,7 @@ export default function ChatPage() {
             const isDari = p.pengirim_id === user?.id
             return (
               <div key={p.id} className={`flex ${isDari ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-xs ${isDari ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
+                <div className={`max-w-xs flex flex-col gap-1 ${isDari ? 'items-end' : 'items-start'}`}>
                   {!isDari && (
                     <span className="text-xs text-gray-400 px-1 font-semibold">
                       {p.is_penjual ? '🏪 Penjual' : '👤 Pembeli'}
@@ -149,7 +210,7 @@ export default function ChatPage() {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && kirimPesan()}
-            placeholder={isPenjual ? 'Balas pesan pembeli...' : 'Tanya ketersediaan produk...'}
+            placeholder={isPenjual ? 'Balas pesan pembeli...' : 'Ketik pesan...'}
             className="flex-1 border-2 border-gray-100 rounded-2xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition"
           />
           <button

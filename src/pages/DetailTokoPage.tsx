@@ -19,15 +19,12 @@ export default function DetailTokoPage() {
   async function loadDetail() {
     const { data: userData } = await supabase.auth.getUser()
     setUser(userData.user)
-
     const { data: tokoData } = await supabase
       .from('toko').select('*').eq('id', id).single()
     setToko(tokoData)
-
     const { data: produkData } = await supabase
       .from('produk').select('*').eq('toko_id', id)
     setProduk(produkData || [])
-
     if (userData.user) {
       const { data: keranjangData } = await supabase
         .from('keranjang').select('*')
@@ -35,19 +32,15 @@ export default function DetailTokoPage() {
         .eq('toko_id', id)
       setKeranjang(keranjangData || [])
     }
-
     setLoading(false)
   }
 
   async function tambahKeranjang(produkItem: any) {
     if (!user) { navigate('/login'); return }
-
     const existing = keranjang.find(k => k.produk_id === produkItem.id)
     if (existing) {
       const { error } = await supabase
-        .from('keranjang')
-        .update({ jumlah: existing.jumlah + 1 })
-        .eq('id', existing.id)
+        .from('keranjang').update({ jumlah: existing.jumlah + 1 }).eq('id', existing.id)
       if (!error) {
         setKeranjang(prev => prev.map(k => k.id === existing.id ? { ...k, jumlah: k.jumlah + 1 } : k))
         toast.success(`+1 ${produkItem.nama}`)
@@ -84,25 +77,29 @@ export default function DetailTokoPage() {
     return keranjang.reduce((acc, k) => acc + k.jumlah, 0)
   }
 
+  function totalHarga() {
+    return keranjang.reduce((acc, k) => {
+      const p = produk.find(p => p.id === k.produk_id)
+      return acc + (p?.harga || 0) * k.jumlah
+    }, 0)
+  }
+
   async function pesanSekarang() {
     if (!user) { navigate('/login'); return }
     if (keranjang.length === 0) { toast.error('Keranjang masih kosong'); return }
-
     const itemList = keranjang.map(k => {
       const p = produk.find(p => p.id === k.produk_id)
       return `${p?.nama} x${k.jumlah}`
     }).join(', ')
-
     const pesanOtomatis = `Halo, saya ingin memesan: ${itemList}. Apakah tersedia?`
-
     await supabase.from('pesan').insert({
       toko_id: id,
       pengirim_id: user.id,
       pengirim_email: user.email,
+      pembeli_id: user.id,
       isi: pesanOtomatis,
       is_penjual: false,
     })
-
     navigate(`/chat/${id}`)
     toast.success('Pesanan dikirim ke chat!')
   }
@@ -111,13 +108,6 @@ export default function DetailTokoPage() {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency', currency: 'IDR', minimumFractionDigits: 0,
     }).format(harga)
-  }
-
-  function totalHarga() {
-    return keranjang.reduce((acc, k) => {
-      const p = produk.find(p => p.id === k.produk_id)
-      return acc + (p?.harga || 0) * k.jumlah
-    }, 0)
   }
 
   if (loading) {
@@ -139,7 +129,6 @@ export default function DetailTokoPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-28">
 
-      {/* Hero foto */}
       <div className="relative">
         {toko.foto_url ? (
           <img src={toko.foto_url} alt={toko.nama} className="w-full h-56 object-cover" />
@@ -159,16 +148,11 @@ export default function DetailTokoPage() {
 
       <div className="max-w-lg mx-auto px-4 py-4 space-y-4">
 
-        {/* Info Toko */}
         <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm">
           <h1 className="font-extrabold text-gray-900 text-xl mb-1">{toko.nama}</h1>
           <span className="inline-block text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded-full font-semibold mb-3">{toko.kategori}</span>
-          {toko.alamat && (
-            <p className="text-sm text-gray-500 mb-2">📍 {toko.alamat}</p>
-          )}
-          {toko.deskripsi && (
-            <p className="text-sm text-gray-500 leading-relaxed">{toko.deskripsi}</p>
-          )}
+          {toko.alamat && <p className="text-sm text-gray-500 mb-2">📍 {toko.alamat}</p>}
+          {toko.deskripsi && <p className="text-sm text-gray-500 leading-relaxed">{toko.deskripsi}</p>}
           <button
             onClick={() => navigate(`/chat/${toko.id}`)}
             className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl py-3 text-sm font-bold transition shadow-sm"
@@ -177,7 +161,6 @@ export default function DetailTokoPage() {
           </button>
         </div>
 
-        {/* Produk */}
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-extrabold text-gray-900">Produk & Layanan</h2>
@@ -202,12 +185,8 @@ export default function DetailTokoPage() {
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <h3 className="font-bold text-gray-900 text-sm">{p.nama}</h3>
-                          {p.deskripsi && (
-                            <p className="text-xs text-gray-400 mt-0.5">{p.deskripsi}</p>
-                          )}
-                          <span className="text-sm font-extrabold text-red-600 mt-1 block">
-                            {formatHarga(p.harga)}
-                          </span>
+                          {p.deskripsi && <p className="text-xs text-gray-400 mt-0.5">{p.deskripsi}</p>}
+                          <span className="text-sm font-extrabold text-red-600 mt-1 block">{formatHarga(p.harga)}</span>
                         </div>
                       </div>
                       {jumlah === 0 ? (
@@ -243,7 +222,6 @@ export default function DetailTokoPage() {
         </div>
       </div>
 
-      {/* Bottom bar keranjang */}
       {totalKeranjang() > 0 && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 shadow-lg">
           <div className="max-w-lg mx-auto">
