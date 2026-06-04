@@ -7,41 +7,46 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white">
 
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white text-sm font-bold">L</div>
-          <span className="font-bold text-gray-800 text-lg">Lokaku</span>
+          <div className="w-9 h-9 bg-gradient-to-br from-green-500 to-green-700 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-sm">L</div>
+          <span className="font-extrabold text-gray-900 text-xl">Lokaku</span>
         </div>
         <button
           onClick={() => navigate('/login')}
-          className="text-sm text-red-600 font-medium border border-red-600 px-4 py-1.5 rounded-lg hover:bg-red-50 transition"
+          className="text-sm font-semibold text-red-600 border-2 border-red-600 px-5 py-2 rounded-xl hover:bg-red-50 transition"
         >
           Masuk
         </button>
       </div>
 
       {/* Hero */}
-      <div className="bg-gradient-to-br from-green-600 to-green-700 text-white px-6 py-16 text-center">
-        <div className="max-w-lg mx-auto">
-          <span className="text-xs bg-green-500 px-3 py-1 rounded-full mb-4 inline-block">
-            Platform UMKM Lokal Indonesia
+      <div className="relative bg-gradient-to-br from-green-600 via-green-700 to-emerald-800 text-white px-6 py-20 text-center overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-10 left-10 w-32 h-32 bg-white rounded-full"></div>
+          <div className="absolute bottom-10 right-10 w-48 h-48 bg-white rounded-full"></div>
+          <div className="absolute top-1/2 left-1/2 w-24 h-24 bg-white rounded-full"></div>
+        </div>
+        <div className="relative max-w-lg mx-auto">
+          <span className="inline-block text-xs bg-white/20 backdrop-blur px-4 py-1.5 rounded-full mb-5 font-semibold tracking-wide">
+            🇮🇩 Platform UMKM Lokal Indonesia
           </span>
-          <h1 className="text-3xl font-bold mb-4 leading-tight">
-            Temukan kebutuhan sekitar, sekarang!
+          <h1 className="text-4xl font-extrabold mb-4 leading-tight">
+            Temukan kebutuhan sekitar, <span className="text-yellow-300">sekarang!</span>
           </h1>
-          <p className="text-green-100 text-sm mb-8 leading-relaxed">
-            Lokaku menghubungkan kamu dengan UMKM lokal yang sedang buka di sekitarmu secara realtime. Cepat, mudah, dan langsung terhubung.
+          <p className="text-green-100 text-sm mb-10 leading-relaxed max-w-sm mx-auto">
+            Lokaku menghubungkan kamu dengan UMKM lokal yang sedang buka di sekitarmu secara realtime.
           </p>
           <div className="flex gap-3 justify-center">
             <button
               onClick={() => navigate('/cari')}
-              className="bg-white text-green-700 font-semibold px-6 py-2.5 rounded-lg text-sm hover:bg-green-50 transition"
+              className="bg-white text-green-700 font-bold px-7 py-3 rounded-xl text-sm hover:bg-green-50 transition shadow-lg"
             >
               🔍 Cari Toko
             </button>
             <button
               onClick={() => navigate('/login')}
-              className="bg-green-500 text-white font-semibold px-6 py-2.5 rounded-lg text-sm hover:bg-green-400 transition border border-green-400"
+              className="bg-yellow-400 text-gray-900 font-bold px-7 py-3 rounded-xl text-sm hover:bg-yellow-300 transition shadow-lg"
             >
               Daftar UMKM
             </button>
@@ -49,80 +54,71 @@ export default function LandingPage() {
         </div>
       </div>
 
-      {/* Fitur */}
-      <div className="px-6 py-12 max-w-lg mx-auto">
-        <h2 className="text-center font-bold text-gray-800 text-xl mb-8">Kenapa pakai Lokaku?</h2>
-        <div className="space-y-4">
-          <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
-            <span className="text-2xl">📍</span>
-            <div>
-              <h3 className="font-semibold text-gray-800 text-sm">Berbasis Lokasi Realtime</h3>
-              <p className="text-xs text-gray-500 mt-1">Temukan toko yang benar-benar buka dan ada di dekatmu saat ini</p>
-            </div>
+      {/* Stats */}
+      <div className="bg-gray-900 text-white px-6 py-8">
+        <div className="max-w-lg mx-auto grid grid-cols-3 gap-4 text-center">
+          <div>
+            <p className="text-2xl font-extrabold text-yellow-400">100%</p>
+            <p className="text-xs text-gray-400 mt-1">Gratis</p>
           </div>
-          <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
-            <span className="text-2xl">⚡</span>
-            <div>
-              <h3 className="font-semibold text-gray-800 text-sm">Cepat & Langsung</h3>
-              <p className="text-xs text-gray-500 mt-1">Hubungi penjual langsung via WhatsApp tanpa perantara</p>
-            </div>
+          <div>
+            <p className="text-2xl font-extrabold text-yellow-400">Realtime</p>
+            <p className="text-xs text-gray-400 mt-1">Status buka</p>
           </div>
-          <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
-            <span className="text-2xl">🏪</span>
-            <div>
-              <h3 className="font-semibold text-gray-800 text-sm">Khusus UMKM Lokal</h3>
-              <p className="text-xs text-gray-500 mt-1">Dukung usaha sekitarmu, bukan marketplace nasional</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
-            <span className="text-2xl">🗺️</span>
-            <div>
-              <h3 className="font-semibold text-gray-800 text-sm">Lihat di Peta</h3>
-              <p className="text-xs text-gray-500 mt-1">Tampilkan lokasi toko langsung di peta interaktif</p>
-            </div>
+          <div>
+            <p className="text-2xl font-extrabold text-yellow-400">5 menit</p>
+            <p className="text-xs text-gray-400 mt-1">Setup toko</p>
           </div>
         </div>
       </div>
 
-      {/* Untuk UMKM */}
-      <div className="bg-gray-50 px-6 py-12">
-        <div className="max-w-lg mx-auto text-center">
-          <h2 className="font-bold text-gray-800 text-xl mb-3">Punya UMKM? Daftarkan sekarang!</h2>
-          <p className="text-sm text-gray-500 mb-6">Gratis selamanya. Mudah dikelola. Langsung ditemukan pembeli di sekitarmu.</p>
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-green-600">100%</p>
-              <p className="text-xs text-gray-500">Gratis</p>
+      {/* Fitur */}
+      <div className="px-6 py-14 max-w-lg mx-auto">
+        <h2 className="text-center font-extrabold text-gray-900 text-2xl mb-2">Kenapa pakai Lokaku?</h2>
+        <p className="text-center text-gray-400 text-sm mb-8">Bukan marketplace biasa — ini radar kebutuhan sekitarmu</p>
+        <div className="space-y-4">
+          {[
+            { icon: '📍', title: 'Berbasis Lokasi Realtime', desc: 'Temukan toko yang benar-benar buka dan ada di dekatmu saat ini' },
+            { icon: '⚡', title: 'Cepat & Langsung', desc: 'Hubungi penjual langsung via WhatsApp tanpa perantara' },
+            { icon: '🏪', title: 'Khusus UMKM Lokal', desc: 'Dukung usaha sekitarmu, bukan marketplace nasional' },
+            { icon: '🗺️', title: 'Lihat di Peta', desc: 'Tampilkan lokasi toko langsung di peta interaktif' },
+          ].map((f, i) => (
+            <div key={i} className="flex items-start gap-4 p-5 bg-gray-50 rounded-2xl border border-gray-100">
+              <span className="text-3xl">{f.icon}</span>
+              <div>
+                <h3 className="font-bold text-gray-800 text-sm">{f.title}</h3>
+                <p className="text-xs text-gray-500 mt-1 leading-relaxed">{f.desc}</p>
+              </div>
             </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-green-600">5 menit</p>
-              <p className="text-xs text-gray-500">Setup toko</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-green-600">Realtime</p>
-              <p className="text-xs text-gray-500">Status buka</p>
-            </div>
-          </div>
+          ))}
+        </div>
+      </div>
+
+      {/* CTA */}
+      <div className="bg-gradient-to-br from-red-600 to-red-700 px-6 py-14">
+        <div className="max-w-lg mx-auto text-center text-white">
+          <h2 className="font-extrabold text-2xl mb-3">Punya UMKM? Daftarkan sekarang!</h2>
+          <p className="text-red-100 text-sm mb-8">Gratis selamanya. Mudah dikelola. Langsung ditemukan pembeli di sekitarmu.</p>
           <button
             onClick={() => navigate('/login')}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-xl text-sm transition"
+            className="w-full bg-white text-red-600 font-extrabold py-4 rounded-2xl text-sm transition hover:bg-red-50 shadow-xl"
           >
-            Daftar Sekarang — Gratis!
+            Daftar Sekarang — Gratis! 🚀
           </button>
         </div>
       </div>
 
       {/* Footer */}
-      <div className="px-6 py-8 text-center border-t">
+      <div className="px-6 py-8 text-center bg-gray-900 text-white">
         <div className="flex items-center justify-center gap-2 mb-2">
-          <div className="w-6 h-6 bg-green-600 rounded-md flex items-center justify-center text-white text-xs font-bold">L</div>
-          <span className="font-bold text-gray-700">Lokaku</span>
+          <div className="w-7 h-7 bg-green-600 rounded-lg flex items-center justify-center text-white text-xs font-black">L</div>
+          <span className="font-extrabold text-white">Lokaku</span>
         </div>
-        <p className="text-xs text-gray-400">"Apa pun kebutuhan sekitarmu, cari di Lokaku"</p>
-        <div className="flex justify-center gap-4 mt-4">
-          <button onClick={() => navigate('/cari')} className="text-xs text-gray-400 hover:text-gray-600">Cari Toko</button>
-          <button onClick={() => navigate('/peta')} className="text-xs text-gray-400 hover:text-gray-600">Peta</button>
-          <button onClick={() => navigate('/login')} className="text-xs text-gray-400 hover:text-gray-600">Masuk</button>
+        <p className="text-xs text-gray-500">"Apa pun kebutuhan sekitarmu, cari di Lokaku"</p>
+        <div className="flex justify-center gap-6 mt-4">
+          <button onClick={() => navigate('/cari')} className="text-xs text-gray-500 hover:text-white transition">Cari Toko</button>
+          <button onClick={() => navigate('/peta')} className="text-xs text-gray-500 hover:text-white transition">Peta</button>
+          <button onClick={() => navigate('/login')} className="text-xs text-gray-500 hover:text-white transition">Masuk</button>
         </div>
       </div>
 
