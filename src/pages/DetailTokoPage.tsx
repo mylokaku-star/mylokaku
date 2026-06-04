@@ -71,6 +71,11 @@ export default function DetailTokoPage() {
         <span className="font-semibold text-gray-800 truncate">{toko.nama}</span>
       </div>
 
+      {/* Foto toko */}
+      {toko.foto_url && (
+        <img src={toko.foto_url} alt={toko.nama} className="w-full h-48 object-cover" />
+      )}
+
       <div className="max-w-lg mx-auto p-4 space-y-4">
 
         {/* Info Toko */}
@@ -84,15 +89,12 @@ export default function DetailTokoPage() {
               {toko.is_buka ? 'BUKA' : 'TUTUP'}
             </span>
           </div>
-
           {toko.alamat && (
             <p className="text-sm text-gray-500 mb-2">📍 {toko.alamat}</p>
           )}
-
           {toko.deskripsi && (
             <p className="text-sm text-gray-500 mb-3">{toko.deskripsi}</p>
           )}
-
           {toko.telepon && (
             <button
               onClick={hubungiWhatsapp}
@@ -115,19 +117,24 @@ export default function DetailTokoPage() {
               <p className="text-gray-400 text-sm">Belum ada produk</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {produk.map(p => (
-                <div key={p.id} className="bg-white rounded-xl p-4 border border-gray-100">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-800 text-sm">{p.nama}</h3>
-                      {p.deskripsi && (
-                        <p className="text-xs text-gray-400 mt-0.5">{p.deskripsi}</p>
-                      )}
+                <div key={p.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                  {p.foto_url && (
+                    <img src={p.foto_url} alt={p.nama} className="w-full h-36 object-cover" />
+                  )}
+                  <div className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-medium text-gray-800 text-sm">{p.nama}</h3>
+                        {p.deskripsi && (
+                          <p className="text-xs text-gray-400 mt-0.5">{p.deskripsi}</p>
+                        )}
+                      </div>
+                      <span className="text-sm font-semibold text-red-600 ml-3">
+                        {formatHarga(p.harga)}
+                      </span>
                     </div>
-                    <span className="text-sm font-semibold text-red-600 ml-3">
-                      {formatHarga(p.harga)}
-                    </span>
                   </div>
                 </div>
               ))}
