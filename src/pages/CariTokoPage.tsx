@@ -2,6 +2,24 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
+function hitungJarak(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const R = 6371
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLng = ((lng2 - lng1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
+
+function formatJarak(km: number) {
+  if (km < 1) return `${Math.round(km * 1000)} m`
+  return `${km.toFixed(1)} km`
+}
+
 export default function CariTokoPage() {
   const navigate = useNavigate()
   const [toko, setToko] = useState<any[]>([])
@@ -9,14 +27,24 @@ export default function CariTokoPage() {
   const [search, setSearch] = useState('')
   const [kategori, setKategori] = useState('')
   const [loading, setLoading] = useState(true)
+  const [userLat, setUserLat] = useState<number | null>(null)
+  const [userLng, setUserLng] = useState<number | null>(null)
+  const [sortByJarak, setSortByJarak] = useState(false)
 
   useEffect(() => {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        setUserLat(pos.coords.latitude)
+        setUserLng(pos.coords.longitude)
+      },
+      () => {}
+    )
     loadToko()
   }, [])
 
   useEffect(() => {
     filter()
-  }, [search, kategori, toko])
+  }, [search, kategori, toko, sortByJarak, userLat, userLng])
 
   async function loadToko() {
     const { data } = await supabase
@@ -25,12 +53,11 @@ export default function CariTokoPage() {
       .eq('is_buka', true)
       .order('created_at', { ascending: false })
     setToko(data || [])
-    setFiltered(data || [])
     setLoading(false)
   }
 
   function filter() {
-    let hasil = toko
+    let hasil = [...toko]
     if (search) {
       hasil = hasil.filter(t =>
         t.nama.toLowerCase().includes(search.toLowerCase()) ||
@@ -39,6 +66,14 @@ export default function CariTokoPage() {
     }
     if (kategori) {
       hasil = hasil.filter(t => t.kategori === kategori)
+    }
+    if (sortByJarak && userLat && userLng) {
+      hasil = hasil
+        .map(t => ({
+          ...t,
+          jarak: t.lat && t.lng ? hitungJarak(userLat, userLng, t.lat, t.lng) : 9999,
+        }))
+        .sort((a, b) => a.jarak - b.jarak)
     }
     setFiltered(hasil)
   }
@@ -77,9 +112,19 @@ export default function CariTokoPage() {
       </div>
 
       <div className="max-w-lg mx-auto p-4">
-        <p className="text-xs text-gray-400 mb-3">
-          {loading ? 'Memuat...' : `${filtered.length} toko sedang buka di sekitarmu`}
-        </p>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs text-gray-400">
+            {loading ? 'Memuat...' : `${filtered.length} toko sedang buka`}
+          </p>
+          {userLat && (
+            <button
+              onClick={() => setSortByJarak(!sortByJarak)}
+              className={`text-xs px-3 py-1 rounded-full border transition ${sortByJarak ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200'}`}
+            >
+              📍 Terdekat
+            </button>
+          )}
+        </div>
 
         {loading ? (
           <div className="text-center py-10 text-gray-400 text-sm">Memuat toko...</div>
@@ -93,11 +138,7 @@ export default function CariTokoPage() {
             {filtered.map(t => (
               <div key={t.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
                 {t.foto_url && (
-                  <img
-                    src={t.foto_url}
-                    alt={t.nama}
-                    className="w-full h-36 object-cover"
-                  />
+                  <img src={t.foto_url} alt={t.nama} className="w-full h-36 object-cover" />
                 )}
                 <div className="p-4">
                   <div className="flex items-start justify-between mb-2">
@@ -105,9 +146,16 @@ export default function CariTokoPage() {
                       <h3 className="font-semibold text-gray-800 text-sm">{t.nama}</h3>
                       <span className="text-xs text-gray-400">{t.kategori}</span>
                     </div>
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
-                      BUKA
-                    </span>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                        BUKA
+                      </span>
+                      {userLat && userLng && t.lat && t.lng && (
+                        <span className="text-xs text-gray-400">
+                          📍 {formatJarak(hitungJarak(userLat, userLng, t.lat, t.lng))}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   {t.alamat && (
                     <p className="text-xs text-gray-500 mb-2">📍 {t.alamat}</p>
