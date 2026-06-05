@@ -7,7 +7,10 @@ export default function ProfilPage() {
   const navigate = useNavigate()
   const [user, setUser] = useState<any>(null)
   const [toko, setToko] = useState<any>(null)
+  const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [editNama, setEditNama] = useState('')
+  const [savingNama, setSavingNama] = useState(false)
   const [formPassword, setFormPassword] = useState({ baru: '', konfirmasi: '' })
   const [savingPassword, setSavingPassword] = useState(false)
 
@@ -19,10 +22,43 @@ export default function ProfilPage() {
     const { data: userData } = await supabase.auth.getUser()
     if (!userData.user) { navigate('/login'); return }
     setUser(userData.user)
+
+    // Load profil nama
+    const { data: profileData } = await supabase
+      .from('profiles').select('*').eq('id', userData.user.id).single()
+    setProfile(profileData)
+    setEditNama(profileData?.nama || '')
+
     const { data: tokoData } = await supabase
       .from('toko').select('*').eq('user_id', userData.user.id).single()
     setToko(tokoData)
     setLoading(false)
+  }
+
+  async function handleSimpanNama() {
+    if (!editNama.trim()) { toast.error('Nama tidak boleh kosong'); return }
+    if (editNama.trim().length < 2) { toast.error('Nama minimal 2 karakter'); return }
+    setSavingNama(true)
+    if (profile) {
+      const { error } = await supabase
+        .from('profiles').update({ nama: editNama.trim() }).eq('id', user.id)
+      if (error) { toast.error('Gagal simpan nama') }
+      else {
+        setProfile({ ...profile, nama: editNama.trim() })
+        toast.success('Nama berhasil diubah!')
+      }
+    } else {
+      // Belum punya profil, insert baru
+      const nomorWa = user.email?.replace('@lokaku.app', '')
+      const { error } = await supabase
+        .from('profiles').insert({ id: user.id, nama: editNama.trim(), nomor_wa: nomorWa })
+      if (error) { toast.error('Gagal simpan nama') }
+      else {
+        setProfile({ id: user.id, nama: editNama.trim() })
+        toast.success('Nama berhasil disimpan!')
+      }
+    }
+    setSavingNama(false)
   }
 
   async function handleGantiPassword() {
@@ -41,6 +77,16 @@ export default function ProfilPage() {
     navigate('/login')
   }
 
+  function getNomorWA() {
+    const email = user?.email || ''
+    return email.replace('@lokaku.app', '')
+  }
+
+  function getInisial() {
+    const nama = profile?.nama || user?.email || '?'
+    return nama.charAt(0).toUpperCase()
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -56,16 +102,47 @@ export default function ProfilPage() {
       <div className="bg-gradient-to-br from-gray-800 to-gray-900 px-4 pt-8 pb-12">
         <div className="max-w-lg mx-auto text-center">
           <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white text-3xl font-black mx-auto mb-3 shadow-lg">
-            {user?.email?.[0].toUpperCase()}
+            {getInisial()}
           </div>
-          <p className="text-white font-bold">{user?.email}</p>
+          {/* Tampilkan nama, bukan nomor WA */}
+          <p className="text-white font-bold text-lg">
+            {profile?.nama || 'Belum ada nama'}
+          </p>
           <p className="text-gray-400 text-xs mt-1">
+            📱 +{getNomorWA()}
+          </p>
+          <p className="text-gray-500 text-xs mt-0.5">
             Member sejak {new Date(user?.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
       </div>
 
       <div className="max-w-lg mx-auto px-4 -mt-6 space-y-4">
+
+        {/* Edit Nama */}
+        <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm">
+          <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-4">Nama Tampilan</p>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-semibold text-gray-700 block mb-1.5">Nama Kamu</label>
+              <input
+                type="text"
+                value={editNama}
+                onChange={e => setEditNama(e.target.value)}
+                placeholder="Masukkan nama kamu"
+                className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition"
+              />
+              <p className="text-xs text-gray-400 mt-1">Nama ini yang tampil di chat dan profil kamu</p>
+            </div>
+            <button
+              onClick={handleSimpanNama}
+              disabled={savingNama || editNama.trim() === profile?.nama}
+              className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl py-3 text-sm font-bold transition shadow-sm disabled:opacity-50"
+            >
+              {savingNama ? 'Menyimpan...' : 'Simpan Nama'}
+            </button>
+          </div>
+        </div>
 
         {/* Info Toko */}
         {toko && (

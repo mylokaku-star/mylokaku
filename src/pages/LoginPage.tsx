@@ -12,6 +12,7 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const [tab, setTab] = useState<'masuk' | 'daftar'>('masuk')
   const [nomor, setNomor] = useState('')
+  const [nama, setNama] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -31,19 +32,34 @@ export default function LoginPage() {
   }
 
   async function handleDaftar() {
-    if (!nomor || !password) { toast.error('Nomor WA dan kata sandi wajib diisi'); return }
+    if (!nomor || !password || !nama) { toast.error('Semua field wajib diisi'); return }
+    if (nama.trim().length < 2) { toast.error('Nama minimal 2 karakter'); return }
     if (nomor.length < 10) { toast.error('Nomor WA tidak valid'); return }
     if (password.length < 6) { toast.error('Kata sandi minimal 6 karakter'); return }
     setLoading(true)
     const email = nomorKeEmail(nomor)
-    const { error } = await supabase.auth.signUp({ email, password })
-    setLoading(false)
+    const nomorBersih = nomor.replace(/\D/g, '').replace(/^0/, '62')
+
+    const { data, error } = await supabase.auth.signUp({ email, password })
     if (error) {
+      setLoading(false)
       toast.error('Gagal daftar: ' + error.message)
-    } else {
-      toast.success('Berhasil daftar! Silakan masuk.')
-      setTab('masuk')
+      return
     }
+
+    // Simpan nama ke tabel profiles
+    if (data.user) {
+      await supabase.from('profiles').insert({
+        id: data.user.id,
+        nama: nama.trim(),
+        nomor_wa: nomorBersih,
+      })
+    }
+
+    setLoading(false)
+    toast.success('Berhasil daftar! Silakan masuk.')
+    setTab('masuk')
+    setNama('')
   }
 
   return (
@@ -87,6 +103,24 @@ export default function LoginPage() {
 
           {/* Form */}
           <div className="space-y-4">
+
+            {/* Field Nama — hanya muncul saat daftar */}
+            {tab === 'daftar' && (
+              <div>
+                <label className="text-sm font-semibold text-gray-700 block mb-1.5">Nama Lengkap</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">👤</span>
+                  <input
+                    type="text"
+                    placeholder="Nama yang akan ditampilkan"
+                    value={nama}
+                    onChange={e => setNama(e.target.value)}
+                    className="w-full border-2 border-gray-100 rounded-xl pl-10 pr-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition"
+                  />
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="text-sm font-semibold text-gray-700 block mb-1.5">Nomor WhatsApp</label>
               <div className="relative">
@@ -100,6 +134,7 @@ export default function LoginPage() {
                 />
               </div>
             </div>
+
             <div>
               <label className="text-sm font-semibold text-gray-700 block mb-1.5">Kata Sandi</label>
               <div className="relative">
@@ -119,6 +154,7 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
+
             <button
               onClick={tab === 'masuk' ? handleMasuk : handleDaftar}
               disabled={loading}
