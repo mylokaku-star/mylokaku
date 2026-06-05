@@ -30,7 +30,7 @@ export default function DashboardPage() {
       setIsBuka(data.is_buka)
       loadUnread(data.id)
 
-      // Realtime unread
+      // Realtime unread + toast notifikasi
       supabase
         .channel(`unread-${data.id}`)
         .on('postgres_changes', {
@@ -42,6 +42,36 @@ export default function DashboardPage() {
           const msg = payload.new as any
           if (!msg.is_penjual) {
             setUnreadCount(prev => prev + 1)
+
+            // Toast notifikasi pesan baru
+            toast('💬 Pesan baru masuk!', {
+              description: msg.isi?.length > 50
+                ? msg.isi.slice(0, 50) + '...'
+                : msg.isi,
+              duration: 5000,
+              action: {
+                label: 'Balas',
+                onClick: () => navigate(`/chat/${data.id}`),
+              },
+            })
+
+            // Judul tab berkedip
+            let blinkInterval: any
+            let original = document.title
+            let blink = false
+            blinkInterval = setInterval(() => {
+              document.title = blink ? `💬 Pesan Baru - Lokaku` : original
+              blink = !blink
+            }, 1000)
+            // Stop berkedip setelah 10 detik atau waktu tab difokus
+            setTimeout(() => {
+              clearInterval(blinkInterval)
+              document.title = original
+            }, 10000)
+            window.addEventListener('focus', () => {
+              clearInterval(blinkInterval)
+              document.title = original
+            }, { once: true })
           }
         })
         .subscribe()
@@ -155,7 +185,7 @@ export default function DashboardPage() {
                 className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition relative"
               >
                 {unreadCount > 0 && (
-                  <span className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                  <span className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center animate-bounce">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
