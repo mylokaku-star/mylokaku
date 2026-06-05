@@ -9,24 +9,38 @@ export default function EditTokoPage() {
   const [saving, setSaving] = useState(false)
   const [loadingLokasi, setLoadingLokasi] = useState(false)
   const [uploadingFoto, setUploadingFoto] = useState(false)
+  const [tokoId, setTokoId] = useState('')
   const [form, setForm] = useState({
     nama: '', deskripsi: '', kategori: '', alamat: '', telepon: '', lat: '', lng: '', foto_url: '',
   })
-  const [tokoId, setTokoId] = useState('')
 
   useEffect(() => { loadToko() }, [])
 
   async function loadToko() {
     const { data: userData } = await supabase.auth.getUser()
-    const { data } = await supabase.from('toko').select('*').eq('user_id', userData.user?.id).single()
+    if (!userData.user) { navigate('/login'); return }
+
+    const { data } = await supabase
+      .from('toko')
+      .select('*')
+      .eq('user_id', userData.user.id)
+      .single()
+
     if (data) {
       setTokoId(data.id)
       setForm({
-        nama: data.nama || '', deskripsi: data.deskripsi || '', kategori: data.kategori || '',
-        alamat: data.alamat || '', telepon: data.telepon || '',
-        lat: data.lat ? data.lat.toString() : '', lng: data.lng ? data.lng.toString() : '',
+        nama: data.nama || '',
+        deskripsi: data.deskripsi || '',
+        kategori: data.kategori || '',
+        alamat: data.alamat || '',
+        telepon: data.telepon || '',
+        lat: data.lat ? data.lat.toString() : '',
+        lng: data.lng ? data.lng.toString() : '',
         foto_url: data.foto_url || '',
       })
+    } else {
+      toast.error('Toko tidak ditemukan')
+      navigate('/buat-toko')
     }
     setLoading(false)
   }
@@ -39,10 +53,12 @@ export default function EditTokoPage() {
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > 2 * 1024 * 1024) { toast.error('Ukuran foto maksimal 2MB'); return }
+    if (!tokoId) { toast.error('Toko belum dimuat'); return }
     setUploadingFoto(true)
     const ext = file.name.split('.').pop()
     const fileName = `${tokoId}-${Date.now()}.${ext}`
-    const { error: uploadError } = await supabase.storage.from('toko-foto').upload(fileName, file, { upsert: true })
+    const { error: uploadError } = await supabase.storage
+      .from('toko-foto').upload(fileName, file, { upsert: true })
     if (uploadError) { toast.error('Gagal upload foto'); setUploadingFoto(false); return }
     const { data: urlData } = supabase.storage.from('toko-foto').getPublicUrl(fileName)
     setForm(f => ({ ...f, foto_url: urlData.publicUrl }))
@@ -63,18 +79,35 @@ export default function EditTokoPage() {
   }
 
   async function handleSave() {
-    if (!form.nama || !form.kategori || !form.alamat) { toast.error('Nama, kategori, dan alamat wajib diisi'); return }
+    if (!form.nama || !form.kategori || !form.alamat) {
+      toast.error('Nama, kategori, dan alamat wajib diisi')
+      return
+    }
+    if (!tokoId) {
+      toast.error('Toko tidak ditemukan')
+      return
+    }
     setSaving(true)
-    const { error } = await supabase.from('toko').update({
-      nama: form.nama, deskripsi: form.deskripsi, kategori: form.kategori,
-      alamat: form.alamat, telepon: form.telepon,
-      lat: form.lat ? parseFloat(form.lat) : null,
-      lng: form.lng ? parseFloat(form.lng) : null,
-      foto_url: form.foto_url,
-    }).eq('id', tokoId)
+    const { error } = await supabase
+      .from('toko')
+      .update({
+        nama: form.nama,
+        deskripsi: form.deskripsi,
+        kategori: form.kategori,
+        alamat: form.alamat,
+        telepon: form.telepon,
+        lat: form.lat ? parseFloat(form.lat) : null,
+        lng: form.lng ? parseFloat(form.lng) : null,
+        foto_url: form.foto_url,
+      })
+      .eq('id', tokoId)
     setSaving(false)
-    if (error) { toast.error('Gagal menyimpan: ' + error.message) }
-    else { toast.success('Toko berhasil diupdate!'); navigate('/dashboard') }
+    if (error) {
+      toast.error('Gagal menyimpan: ' + error.message)
+    } else {
+      toast.success('Toko berhasil diupdate!')
+      navigate('/dashboard')
+    }
   }
 
   if (loading) {
@@ -96,7 +129,6 @@ export default function EditTokoPage() {
 
       <div className="max-w-lg mx-auto p-4 space-y-4">
 
-        {/* Foto */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
           {form.foto_url ? (
             <img src={form.foto_url} alt="Foto toko" className="w-full h-44 object-cover" />
@@ -111,7 +143,6 @@ export default function EditTokoPage() {
           </div>
         </div>
 
-        {/* Form */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-4">
           <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Info Toko</p>
 
@@ -149,7 +180,6 @@ export default function EditTokoPage() {
           </div>
         </div>
 
-        {/* Lokasi */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-3">
           <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Lokasi di Peta</p>
           <button type="button" onClick={ambilLokasi} disabled={loadingLokasi}

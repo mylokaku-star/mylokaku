@@ -37,13 +37,12 @@ export default function ChatPage() {
     setIsPenjual(penjual)
 
     if (penjual) {
-      // Penjual: load daftar pembeli yang pernah chat
       const { data: pesanData } = await supabase
         .from('pesan')
         .select('pembeli_id, pengirim_email')
         .eq('toko_id', tokoId)
         .not('pembeli_id', 'is', null)
-      
+
       const unique: any[] = []
       const seen = new Set()
       pesanData?.forEach(p => {
@@ -55,18 +54,16 @@ export default function ChatPage() {
       setPembeliList(unique)
       if (unique.length > 0) {
         setSelectedPembeli(unique[0].pembeli_id)
-        await loadPesan(unique[0].pembeli_id)
+        await loadPesan(unique[0].pembeli_id, true)
       }
     } else {
-      // Pembeli: load pesan milik sendiri
       setSelectedPembeli(userData.user.id)
-      await loadPesan(userData.user.id)
+      await loadPesan(userData.user.id, false)
     }
 
     setLoading(false)
 
     // Realtime
-    const pembeliId = penjual ? null : userData.user.id
     const channel = supabase
       .channel(`chat-${tokoId}-${userData.user.id}`)
       .on('postgres_changes', {
@@ -74,13 +71,14 @@ export default function ChatPage() {
         schema: 'public',
         table: 'pesan',
         filter: `toko_id=eq.${tokoId}`,
-      }, payload => {
+      }, async payload => {
         const msg = payload.new as any
-        if (
-          (penjual && msg.pembeli_id === selectedPembeli) ||
-          (!penjual && msg.pembeli_id === userData.user.id)
-        ) {
+        const currentPembeli = penjual ? selectedPembeli : userData.user.id
+        if (msg.pembeli_id === currentPembeli) {
           setPesan(prev => [...prev, msg])
+          if (penjual && !msg.is_penjual) {
+            await supabase.from('pesan').update({ is_read: true }).eq('id', msg.id)
+          }
         }
       })
       .subscribe()
@@ -88,7 +86,7 @@ export default function ChatPage() {
     return () => { supabase.removeChannel(channel) }
   }
 
-  async function loadPesan(pembeliId: string) {
+  async function loadPesan(pembeliId: string, markRead: boolean) {
     const { data } = await supabase
       .from('pesan')
       .select('*')
@@ -96,6 +94,21 @@ export default function ChatPage() {
       .eq('pembeli_id', pembeliId)
       .order('created_at', { ascending: true })
     setPesan(data || [])
+
+    if (markRead) {
+      await supabase
+        .from('pesan')
+        .update({ is_read: true })
+        .eq('toko_id', tokoId)
+        .eq('pembeli_id', pembeliId)
+        .eq('is_penjual', false)
+        .eq('is_read', false)
+    }
+  }
+
+  async function pilihPembeli(pembeliId: string) {
+    setSelectedPembeli(pembeliId)
+    await loadPesan(pembeliId, true)
   }
 
   async function kirimPesan() {
@@ -108,14 +121,10 @@ export default function ChatPage() {
       pembeli_id: pembeliId,
       isi: input.trim(),
       is_penjual: isPenjual,
+      is_read: isPenjual,
     })
     if (error) { toast.error('Gagal kirim pesan') }
     else { setInput('') }
-  }
-
-  async function pilihPembeli(pembeliId: string) {
-    setSelectedPembeli(pembeliId)
-    await loadPesan(pembeliId)
   }
 
   function formatWaktu(timestamp: string) {
@@ -133,7 +142,6 @@ export default function ChatPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
 
-      {/* Header */}
       <div className="bg-white border-b border-gray-100 px-4 py-4 flex items-center gap-3 sticky top-0 z-10 shadow-sm">
         <button
           onClick={() => navigate(isPenjual ? '/dashboard' : `/toko/${tokoId}`)}
@@ -155,7 +163,6 @@ export default function ChatPage() {
         </span>
       </div>
 
-      {/* List pembeli (khusus penjual) */}
       {isPenjual && pembeliList.length > 0 && (
         <div className="bg-white border-b border-gray-100 px-4 py-2 flex gap-2 overflow-x-auto">
           {pembeliList.map(p => (
@@ -170,7 +177,6 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* Pesan */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 pb-24">
         {pesan.length === 0 ? (
           <div className="text-center py-16">
@@ -194,7 +200,12 @@ export default function ChatPage() {
                   <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isDari ? 'bg-gradient-to-br from-green-500 to-green-600 text-white rounded-br-md' : 'bg-white border border-gray-100 text-gray-800 rounded-bl-md shadow-sm'}`}>
                     {p.isi}
                   </div>
-                  <span className="text-xs text-gray-300 px-1">{formatWaktu(p.created_at)}</span>
+                  <div className="flex items-center gap-1 px-1">
+                    <span className="text-xs text-gray-300">{formatWaktu(p.created_at)}</span>
+                    {isDari && (
+                      <span className="text-xs text-gray-300">{p.is_read ? '✓✓' : '✓'}</span>
+                    )}
+                  </div>
                 </div>
               </div>
             )
@@ -203,7 +214,6 @@ export default function ChatPage() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-3 shadow-lg">
         <div className="flex gap-2 max-w-lg mx-auto">
           <input

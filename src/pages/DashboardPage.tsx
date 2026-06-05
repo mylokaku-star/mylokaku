@@ -9,6 +9,7 @@ export default function DashboardPage() {
   const [toko, setToko] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [isBuka, setIsBuka] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -23,24 +24,46 @@ export default function DashboardPage() {
 
   async function loadToko(userId: string) {
     const { data } = await supabase
-      .from('toko')
-      .select('*')
-      .eq('user_id', userId)
-      .single()
+      .from('toko').select('*').eq('user_id', userId).single()
     if (data) {
       setToko(data)
       setIsBuka(data.is_buka)
+      loadUnread(data.id)
+
+      // Realtime unread
+      supabase
+        .channel(`unread-${data.id}`)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'pesan',
+          filter: `toko_id=eq.${data.id}`,
+        }, payload => {
+          const msg = payload.new as any
+          if (!msg.is_penjual) {
+            setUnreadCount(prev => prev + 1)
+          }
+        })
+        .subscribe()
     }
     setLoading(false)
+  }
+
+  async function loadUnread(tokoId: string) {
+    const { count } = await supabase
+      .from('pesan')
+      .select('*', { count: 'exact', head: true })
+      .eq('toko_id', tokoId)
+      .eq('is_penjual', false)
+      .eq('is_read', false)
+    setUnreadCount(count || 0)
   }
 
   async function toggleStatus() {
     if (!toko) return
     const newStatus = !isBuka
     const { error } = await supabase
-      .from('toko')
-      .update({ is_buka: newStatus })
-      .eq('id', toko.id)
+      .from('toko').update({ is_buka: newStatus }).eq('id', toko.id)
     if (!error) {
       setIsBuka(newStatus)
       toast.success(newStatus ? 'Toko sekarang BUKA! 🎉' : 'Toko sekarang TUTUP')
@@ -61,7 +84,6 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
 
-      {/* Header */}
       <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 pt-6 pb-8">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
@@ -77,7 +99,6 @@ export default function DashboardPage() {
 
         {toko ? (
           <>
-            {/* Card Toko */}
             <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100">
               {toko.foto_url ? (
                 <img src={toko.foto_url} alt={toko.nama} className="w-full h-36 object-cover" />
@@ -95,8 +116,6 @@ export default function DashboardPage() {
                     {isBuka ? '🟢 BUKA' : '🔴 TUTUP'}
                   </span>
                 </div>
-
-                {/* Toggle */}
                 <button
                   onClick={toggleStatus}
                   className={`w-full py-3.5 rounded-2xl text-sm font-extrabold transition shadow-sm ${isBuka ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-100' : 'bg-green-600 hover:bg-green-700 text-white shadow-green-100'}`}
@@ -106,7 +125,6 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Menu */}
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => navigate('/edit-toko')}
@@ -133,12 +151,19 @@ export default function DashboardPage() {
                 <p className="text-xs text-gray-400 mt-0.5">Tampilan pembeli</p>
               </button>
               <button
-                onClick={() => navigate('/profil')}
-                className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition"
+                onClick={() => navigate(`/chat/${toko.id}`)}
+                className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition relative"
               >
-                <span className="text-2xl mb-2 block">👤</span>
-                <p className="font-bold text-gray-800 text-sm">Profil</p>
-                <p className="text-xs text-gray-400 mt-0.5">Pengaturan akun</p>
+                {unreadCount > 0 && (
+                  <span className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+                <span className="text-2xl mb-2 block">💬</span>
+                <p className="font-bold text-gray-800 text-sm">Pesan Masuk</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {unreadCount > 0 ? `${unreadCount} pesan baru` : 'Chat pembeli'}
+                </p>
               </button>
             </div>
           </>
@@ -157,7 +182,6 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Bottom nav */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex shadow-lg">
         <button onClick={() => navigate('/cari')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
           <span className="text-lg">🔍</span>
@@ -176,6 +200,7 @@ export default function DashboardPage() {
           <span className="text-xs font-medium text-gray-400">Profil</span>
         </button>
       </div>
+
     </div>
   )
 }
