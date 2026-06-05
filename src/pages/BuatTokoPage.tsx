@@ -3,16 +3,42 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 
+const KATEGORI_TOKO = [
+  'Kuliner & Makanan',
+  'Sembako & Kebutuhan Rumah',
+  'Fashion & Pakaian',
+  'Kesehatan & Apotek',
+  'Salon & Kecantikan',
+  'Elektronik & Gadget',
+  'Toko Lainnya',
+]
+
+const KATEGORI_JASA = [
+  'Jasa Kebersihan',
+  'Supir & Antar Jemput',
+  'Laundry / Cuci / Setrika',
+  'Servis',
+  'Tukang & Renovasi',
+  'Privat & Les',
+  'Jasa Lainnya',
+]
+
 export default function BuatTokoPage() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [loadingLokasi, setLoadingLokasi] = useState(false)
+  const [jenis, setJenis] = useState<'toko' | 'jasa'>('toko')
   const [form, setForm] = useState({
     nama: '', deskripsi: '', kategori: '', alamat: '', telepon: '', lat: '', lng: '',
   })
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
     setForm({ ...form, [e.target.name]: e.target.value })
+  }
+
+  function handleJenisChange(j: 'toko' | 'jasa') {
+    setJenis(j)
+    setForm(f => ({ ...f, kategori: '' })) // reset kategori waktu ganti jenis
   }
 
   function ambilLokasi() {
@@ -34,9 +60,8 @@ export default function BuatTokoPage() {
     }
 
     setLoading(true)
-
     const { data: userData } = await supabase.auth.getUser()
-    
+
     if (!userData.user) {
       toast.error('Silakan login terlebih dahulu')
       setLoading(false)
@@ -48,6 +73,7 @@ export default function BuatTokoPage() {
       nama: form.nama,
       deskripsi: form.deskripsi || null,
       kategori: form.kategori,
+      jenis: jenis, // 'toko' atau 'jasa'
       alamat: form.alamat,
       telepon: form.telepon || null,
       lat: form.lat ? parseFloat(form.lat) : null,
@@ -57,95 +83,194 @@ export default function BuatTokoPage() {
     }
 
     const { error } = await supabase.from('toko').insert(insertData)
-
     setLoading(false)
 
     if (error) {
-      console.error('Error insert toko:', error)
-      toast.error('Gagal membuat toko: ' + error.message)
+      toast.error('Gagal mendaftar: ' + error.message)
     } else {
-      toast.success('Toko berhasil dibuat! 🎉')
+      toast.success(jenis === 'toko' ? 'Toko berhasil dibuat! 🎉' : 'Jasa berhasil didaftarkan! 🎉')
       navigate('/dashboard')
     }
   }
 
-  const kategoriList = ['Kuliner', 'Sembako', 'Fashion', 'Kesehatan', 'Bengkel', 'Laundry', 'Salon & Kecantikan', 'Elektronik', 'Lainnya']
+  const kategoriList = jenis === 'toko' ? KATEGORI_TOKO : KATEGORI_JASA
 
   return (
     <div className="min-h-screen bg-gray-50 pb-8">
+
+      {/* Header */}
       <div className="bg-white border-b border-gray-100 px-4 py-4 flex items-center gap-3 sticky top-0 z-10 shadow-sm">
-        <button onClick={() => navigate('/dashboard')} className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">←</button>
-        <span className="font-extrabold text-gray-900">Buat Toko</span>
+        <button onClick={() => navigate('/dashboard')} className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">
+          ←
+        </button>
+        <div>
+          <h1 className="font-extrabold text-gray-900 text-base">Daftar Toko / Jasa</h1>
+          <p className="text-xs text-gray-400">Gratis selamanya</p>
+        </div>
       </div>
 
-      <div className="max-w-lg mx-auto p-4 space-y-4">
+      <div className="max-w-lg mx-auto px-4 pt-5 space-y-4">
 
-        <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-3xl p-6 text-white text-center">
-          <span className="text-4xl mb-2 block">🏪</span>
-          <h2 className="font-extrabold text-lg">Daftarkan Tokomu!</h2>
-          <p className="text-green-100 text-xs mt-1">Gratis selamanya. Mulai ditemukan pembeli di sekitarmu.</p>
+        {/* Pilih Jenis: Toko atau Jasa */}
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
+          <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-3">Saya ingin daftar sebagai</p>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => handleJenisChange('toko')}
+              className={`flex flex-col items-center gap-2 py-4 rounded-2xl border-2 transition font-bold text-sm ${
+                jenis === 'toko'
+                  ? 'border-green-500 bg-green-50 text-green-700'
+                  : 'border-gray-100 bg-gray-50 text-gray-400'
+              }`}
+            >
+              <span className="text-3xl">🏪</span>
+              <span>Pemilik Toko</span>
+              <span className="text-xs font-normal text-center leading-tight opacity-70">Jualan produk fisik</span>
+            </button>
+            <button
+              onClick={() => handleJenisChange('jasa')}
+              className={`flex flex-col items-center gap-2 py-4 rounded-2xl border-2 transition font-bold text-sm ${
+                jenis === 'jasa'
+                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-gray-100 bg-gray-50 text-gray-400'
+              }`}
+            >
+              <span className="text-3xl">🛠️</span>
+              <span>Penyedia Jasa</span>
+              <span className="text-xs font-normal text-center leading-tight opacity-70">Tawarkan layanan</span>
+            </button>
+          </div>
         </div>
 
+        {/* Info */}
+        <div className={`rounded-2xl px-4 py-3 flex items-start gap-2 ${jenis === 'toko' ? 'bg-green-50' : 'bg-blue-50'}`}>
+          <span className="text-lg">{jenis === 'toko' ? '🏪' : '🛠️'}</span>
+          <p className={`text-xs leading-relaxed ${jenis === 'toko' ? 'text-green-700' : 'text-blue-700'}`}>
+            {jenis === 'toko'
+              ? 'Daftarkan tokomu dan mulai ditemukan pembeli di sekitarmu secara realtime.'
+              : 'Tawarkan jasamu ke warga sekitar. Tidak perlu punya toko fisik!'}
+          </p>
+        </div>
+
+        {/* Form Info */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-4">
-          <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Info Toko</p>
+          <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">
+            Info {jenis === 'toko' ? 'Toko' : 'Jasa'}
+          </p>
 
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">Nama Toko *</label>
-            <input name="nama" value={form.nama} onChange={handleChange} placeholder="contoh: Warung Bu Sari"
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
+            <label className="text-sm font-semibold text-gray-700 block mb-1.5">
+              {jenis === 'toko' ? 'Nama Toko' : 'Nama / Brand Jasa'} *
+            </label>
+            <input
+              name="nama"
+              value={form.nama}
+              onChange={handleChange}
+              placeholder={jenis === 'toko' ? 'contoh: Warung Bu Sari' : 'contoh: Laundry Pak Budi'}
+              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition"
+            />
           </div>
 
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">Kategori *</label>
-            <select name="kategori" value={form.kategori} onChange={handleChange}
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition">
-              <option value="">Pilih kategori</option>
+            <select
+              name="kategori"
+              value={form.kategori}
+              onChange={handleChange}
+              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition"
+            >
+              <option value="">Pilih kategori {jenis === 'toko' ? 'toko' : 'jasa'}</option>
               {kategoriList.map(k => <option key={k} value={k}>{k}</option>)}
             </select>
           </div>
 
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">Alamat *</label>
-            <input name="alamat" value={form.alamat} onChange={handleChange} placeholder="contoh: Jl. Merdeka No. 10"
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
+            <label className="text-sm font-semibold text-gray-700 block mb-1.5">
+              {jenis === 'toko' ? 'Alamat Toko' : 'Area Layanan'} *
+            </label>
+            <input
+              name="alamat"
+              value={form.alamat}
+              onChange={handleChange}
+              placeholder={jenis === 'toko' ? 'contoh: Jl. Merdeka No. 10' : 'contoh: Kelurahan Sukamaju, Kec. Cimanggis'}
+              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition"
+            />
           </div>
 
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">Nomor WhatsApp</label>
-            <input name="telepon" value={form.telepon} onChange={handleChange} placeholder="08123456789"
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
+            <input
+              name="telepon"
+              value={form.telepon}
+              onChange={handleChange}
+              placeholder="08123456789"
+              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition"
+            />
           </div>
 
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">Deskripsi Toko</label>
-            <textarea name="deskripsi" value={form.deskripsi} onChange={handleChange}
-              placeholder="Ceritakan tentang tokomu..." rows={3}
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition resize-none" />
+            <label className="text-sm font-semibold text-gray-700 block mb-1.5">
+              {jenis === 'toko' ? 'Deskripsi Toko' : 'Deskripsi Jasa'}
+            </label>
+            <textarea
+              name="deskripsi"
+              value={form.deskripsi}
+              onChange={handleChange}
+              placeholder={jenis === 'toko'
+                ? 'Ceritakan tentang tokomu...'
+                : 'Jelaskan jasa yang kamu tawarkan, pengalaman, harga, dll...'}
+              rows={3}
+              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition resize-none"
+            />
           </div>
         </div>
 
+        {/* Lokasi */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-3">
           <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Lokasi di Peta</p>
-          <button type="button" onClick={ambilLokasi} disabled={loadingLokasi}
-            className="w-full border-2 border-dashed border-gray-200 text-gray-500 text-sm py-3 rounded-2xl font-semibold hover:bg-gray-50 transition disabled:opacity-50">
+          <button
+            type="button"
+            onClick={ambilLokasi}
+            disabled={loadingLokasi}
+            className="w-full border-2 border-dashed border-gray-200 text-gray-500 text-sm py-3 rounded-2xl font-semibold hover:bg-gray-50 transition disabled:opacity-50"
+          >
             {loadingLokasi ? 'Mengambil lokasi...' : '📍 Ambil Lokasi Saat Ini (GPS)'}
           </button>
           {form.lat && form.lng && (
             <p className="text-xs text-green-600 font-semibold">✅ Lokasi: {parseFloat(form.lat).toFixed(5)}, {parseFloat(form.lng).toFixed(5)}</p>
           )}
           <div className="flex gap-2">
-            <input name="lat" value={form.lat} onChange={handleChange} placeholder="Latitude: -6.2088"
-              className="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
-            <input name="lng" value={form.lng} onChange={handleChange} placeholder="Longitude: 106.8456"
-              className="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
+            <input
+              name="lat"
+              value={form.lat}
+              onChange={handleChange}
+              placeholder="Latitude: -6.2088"
+              className="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-400 bg-gray-50 transition"
+            />
+            <input
+              name="lng"
+              value={form.lng}
+              onChange={handleChange}
+              placeholder="Longitude: 106.8456"
+              className="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-400 bg-gray-50 transition"
+            />
           </div>
           <p className="text-xs text-gray-300">Cari koordinat di maps.google.com → klik kanan → "What's here"</p>
         </div>
 
-        <button onClick={handleSubmit} disabled={loading}
-          className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-2xl py-4 text-sm font-extrabold transition shadow-lg shadow-red-100 disabled:opacity-50">
-          {loading ? 'Menyimpan...' : '🚀 Buat Toko Sekarang'}
+        {/* Submit */}
+        <button
+          onClick={handleSubmit}
+          disabled={loading}
+          className={`w-full text-white rounded-2xl py-4 text-sm font-extrabold transition shadow-lg disabled:opacity-50 ${
+            jenis === 'toko'
+              ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-green-100'
+              : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-blue-100'
+          }`}
+        >
+          {loading ? 'Menyimpan...' : jenis === 'toko' ? '🏪 Daftarkan Toko Sekarang' : '🛠️ Daftarkan Jasa Sekarang'}
         </button>
+
       </div>
     </div>
   )
