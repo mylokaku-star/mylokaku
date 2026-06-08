@@ -11,6 +11,7 @@ import EditTokoPage from './pages/EditTokoPage'
 import ProdukPage from './pages/ProdukPage'
 import ProfilPage from './pages/ProfilPage'
 import ChatPage from './pages/ChatPage'
+import VerifikasiPage from './pages/VerifikasiPage'
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
       <Route path="/produk" element={<ProdukPage />} />
       <Route path="/profil" element={<ProfilPage />} />
       <Route path="/chat/:tokoId" element={<ChatPage />} />
+      <Route path="/verifikasi" element={<VerifikasiPage />} />
     </Routes>
   )
 }
