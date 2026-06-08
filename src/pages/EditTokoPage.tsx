@@ -2,26 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
-
-const KATEGORI_TOKO = [
-  'Kuliner & Makanan',
-  'Sembako & Kebutuhan Rumah',
-  'Fashion & Pakaian',
-  'Kesehatan & Apotek',
-  'Salon & Kecantikan',
-  'Elektronik & Gadget',
-  'Toko Lainnya',
-]
-
-const KATEGORI_JASA = [
-  'Jasa Kebersihan',
-  'Supir & Antar Jemput',
-  'Laundry / Cuci / Setrika',
-  'Servis',
-  'Tukang & Renovasi',
-  'Privat & Les',
-  'Jasa Lainnya',
-]
+import { KATEGORI_TOKO, KATEGORI_JASA } from '../lib/kategori'
 
 export default function EditTokoPage() {
   const navigate = useNavigate()
@@ -40,10 +21,7 @@ export default function EditTokoPage() {
   async function loadToko() {
     const { data: userData } = await supabase.auth.getUser()
     if (!userData.user) { navigate('/login'); return }
-
-    const { data } = await supabase
-      .from('toko').select('*').eq('user_id', userData.user.id).single()
-
+    const { data } = await supabase.from('toko').select('*').eq('user_id', userData.user.id).single()
     if (data) {
       setTokoId(data.id)
       setJenis(data.jenis || 'toko')
@@ -81,8 +59,7 @@ export default function EditTokoPage() {
     setUploadingFoto(true)
     const ext = file.name.split('.').pop()
     const fileName = `${tokoId}-${Date.now()}.${ext}`
-    const { error: uploadError } = await supabase.storage
-      .from('toko-foto').upload(fileName, file, { upsert: true })
+    const { error: uploadError } = await supabase.storage.from('toko-foto').upload(fileName, file, { upsert: true })
     if (uploadError) { toast.error('Gagal upload foto'); setUploadingFoto(false); return }
     const { data: urlData } = supabase.storage.from('toko-foto').getPublicUrl(fileName)
     setForm(f => ({ ...f, foto_url: urlData.publicUrl }))
@@ -103,52 +80,38 @@ export default function EditTokoPage() {
   }
 
   async function handleSave() {
-    if (!form.nama || !form.kategori || !form.alamat) {
-      toast.error('Nama, kategori, dan alamat wajib diisi')
-      return
-    }
+    if (!form.nama || !form.kategori || !form.alamat) { toast.error('Nama, kategori, dan alamat wajib diisi'); return }
     setSaving(true)
-    const { error } = await supabase
-      .from('toko')
-      .update({
-        nama: form.nama,
-        deskripsi: form.deskripsi,
-        kategori: form.kategori,
-        jenis: jenis,
-        alamat: form.alamat,
-        telepon: form.telepon,
-        lat: form.lat ? parseFloat(form.lat) : null,
-        lng: form.lng ? parseFloat(form.lng) : null,
-        foto_url: form.foto_url,
-      })
-      .eq('id', tokoId)
+    const { error } = await supabase.from('toko').update({
+      nama: form.nama,
+      deskripsi: form.deskripsi,
+      kategori: form.kategori,
+      jenis,
+      alamat: form.alamat,
+      telepon: form.telepon,
+      lat: form.lat ? parseFloat(form.lat) : null,
+      lng: form.lng ? parseFloat(form.lng) : null,
+      foto_url: form.foto_url,
+    }).eq('id', tokoId)
     setSaving(false)
-    if (error) {
-      toast.error('Gagal menyimpan: ' + error.message)
-    } else {
-      toast.success('Berhasil diupdate!')
-      navigate('/dashboard')
-    }
+    if (error) { toast.error('Gagal menyimpan: ' + error.message) }
+    else { toast.success('Berhasil diupdate!'); navigate('/dashboard') }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-400 text-sm">Memuat...</p>
-      </div>
-    )
-  }
+  if (loading) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <p className="text-gray-400 text-sm">Memuat...</p>
+    </div>
+  )
 
-  const kategoriList = jenis === 'toko' ? KATEGORI_TOKO : KATEGORI_JASA
+  const grupList = jenis === 'toko' ? KATEGORI_TOKO : KATEGORI_JASA
 
   return (
     <div className="min-h-screen bg-gray-50 pb-8">
 
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-4 py-4 flex items-center gap-3 sticky top-0 z-10 shadow-sm">
-        <button onClick={() => navigate('/dashboard')} className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">
-          ←
-        </button>
+        <button onClick={() => navigate('/dashboard')} className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">←</button>
         <div>
           <h1 className="font-extrabold text-gray-900 text-base">Edit {jenis === 'toko' ? 'Toko' : 'Jasa'}</h1>
           <p className="text-xs text-gray-400">Update info {jenis === 'toko' ? 'toko' : 'jasa'} kamu</p>
@@ -178,24 +141,12 @@ export default function EditTokoPage() {
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
           <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-3">Jenis</p>
           <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => handleJenisChange('toko')}
-              className={`flex items-center justify-center gap-2 py-3 rounded-2xl border-2 transition font-bold text-sm ${
-                jenis === 'toko'
-                  ? 'border-green-500 bg-green-50 text-green-700'
-                  : 'border-gray-100 bg-gray-50 text-gray-400'
-              }`}
-            >
+            <button onClick={() => handleJenisChange('toko')}
+              className={`flex items-center justify-center gap-2 py-3 rounded-2xl border-2 transition font-bold text-sm ${jenis === 'toko' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-400'}`}>
               <span>🏪</span> Toko
             </button>
-            <button
-              onClick={() => handleJenisChange('jasa')}
-              className={`flex items-center justify-center gap-2 py-3 rounded-2xl border-2 transition font-bold text-sm ${
-                jenis === 'jasa'
-                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-gray-100 bg-gray-50 text-gray-400'
-              }`}
-            >
+            <button onClick={() => handleJenisChange('jasa')}
+              className={`flex items-center justify-center gap-2 py-3 rounded-2xl border-2 transition font-bold text-sm ${jenis === 'jasa' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-100 bg-gray-50 text-gray-400'}`}>
               <span>🛠️</span> Jasa
             </button>
           </div>
@@ -203,116 +154,72 @@ export default function EditTokoPage() {
 
         {/* Form Info */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-4">
-          <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">
-            Info {jenis === 'toko' ? 'Toko' : 'Jasa'}
-          </p>
+          <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Info {jenis === 'toko' ? 'Toko' : 'Jasa'}</p>
 
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">
-              {jenis === 'toko' ? 'Nama Toko' : 'Nama / Brand Jasa'} *
-            </label>
-            <input
-              name="nama"
-              value={form.nama}
-              onChange={handleChange}
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition"
-            />
+            <label className="text-sm font-semibold text-gray-700 block mb-1.5">{jenis === 'toko' ? 'Nama Toko' : 'Nama / Brand Jasa'} *</label>
+            <input name="nama" value={form.nama} onChange={handleChange}
+              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
           </div>
 
+          {/* Kategori dengan optgroup */}
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">Kategori *</label>
-            <select
-              name="kategori"
-              value={form.kategori}
-              onChange={handleChange}
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition"
-            >
+            <select name="kategori" value={form.kategori} onChange={handleChange}
+              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition">
               <option value="">Pilih kategori</option>
-              {kategoriList.map(k => <option key={k} value={k}>{k}</option>)}
+              {grupList.map(grup => (
+                <optgroup key={grup.grup} label={`── ${grup.grup}`}>
+                  {grup.items.map(item => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </optgroup>
+              ))}
             </select>
           </div>
 
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">
-              {jenis === 'toko' ? 'Alamat Toko' : 'Area Layanan'} *
-            </label>
-            <input
-              name="alamat"
-              value={form.alamat}
-              onChange={handleChange}
+            <label className="text-sm font-semibold text-gray-700 block mb-1.5">{jenis === 'toko' ? 'Alamat Toko' : 'Area Layanan'} *</label>
+            <input name="alamat" value={form.alamat} onChange={handleChange}
               placeholder={jenis === 'jasa' ? 'contoh: Kelurahan Sukamaju, Kec. Cimanggis' : ''}
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition"
-            />
+              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
           </div>
 
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">Nomor WhatsApp</label>
-            <input
-              name="telepon"
-              value={form.telepon}
-              onChange={handleChange}
-              placeholder="08123456789"
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition"
-            />
+            <input name="telepon" value={form.telepon} onChange={handleChange} placeholder="08123456789"
+              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
           </div>
 
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">
-              {jenis === 'toko' ? 'Deskripsi Toko' : 'Deskripsi Jasa'}
-            </label>
-            <textarea
-              name="deskripsi"
-              value={form.deskripsi}
-              onChange={handleChange}
+            <label className="text-sm font-semibold text-gray-700 block mb-1.5">{jenis === 'toko' ? 'Deskripsi Toko' : 'Deskripsi Jasa'}</label>
+            <textarea name="deskripsi" value={form.deskripsi} onChange={handleChange} rows={3}
               placeholder={jenis === 'jasa' ? 'Jelaskan jasa yang ditawarkan, pengalaman, harga, dll...' : ''}
-              rows={3}
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition resize-none"
-            />
+              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition resize-none" />
           </div>
         </div>
 
         {/* Lokasi */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-3">
           <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Lokasi di Peta</p>
-          <button
-            type="button"
-            onClick={ambilLokasi}
-            disabled={loadingLokasi}
-            className="w-full border-2 border-dashed border-gray-200 text-gray-500 text-sm py-3 rounded-2xl font-semibold hover:bg-gray-50 transition disabled:opacity-50"
-          >
+          <button type="button" onClick={ambilLokasi} disabled={loadingLokasi}
+            className="w-full border-2 border-dashed border-gray-200 text-gray-500 text-sm py-3 rounded-2xl font-semibold hover:bg-gray-50 transition disabled:opacity-50">
             {loadingLokasi ? 'Mengambil lokasi...' : '📍 Ambil Lokasi Saat Ini (GPS)'}
           </button>
           {form.lat && form.lng && (
             <p className="text-xs text-green-600 font-semibold">✅ Lokasi: {parseFloat(form.lat).toFixed(5)}, {parseFloat(form.lng).toFixed(5)}</p>
           )}
           <div className="flex gap-2">
-            <input
-              name="lat"
-              value={form.lat}
-              onChange={handleChange}
-              placeholder="Latitude: -6.2088"
-              className="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-400 bg-gray-50 transition"
-            />
-            <input
-              name="lng"
-              value={form.lng}
-              onChange={handleChange}
-              placeholder="Longitude: 106.8456"
-              className="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-400 bg-gray-50 transition"
-            />
+            <input name="lat" value={form.lat} onChange={handleChange} placeholder="Latitude: -6.2088"
+              className="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
+            <input name="lng" value={form.lng} onChange={handleChange} placeholder="Longitude: 106.8456"
+              className="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
           </div>
         </div>
 
         {/* Simpan */}
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className={`w-full text-white rounded-2xl py-4 text-sm font-extrabold transition shadow-lg disabled:opacity-50 ${
-            jenis === 'toko'
-              ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-green-100'
-              : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-blue-100'
-          }`}
-        >
+        <button onClick={handleSave} disabled={saving}
+          className={`w-full text-white rounded-2xl py-4 text-sm font-extrabold transition shadow-lg disabled:opacity-50 ${jenis === 'toko' ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-green-100' : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-blue-100'}`}>
           {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
         </button>
 
