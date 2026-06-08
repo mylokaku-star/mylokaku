@@ -7,6 +7,7 @@ export default function DetailTokoPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [toko, setToko] = useState<any>(null)
+  const [ownerProfile, setOwnerProfile] = useState<any>(null)
   const [produk, setProduk] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [keranjang, setKeranjang] = useState<any[]>([])
@@ -17,7 +18,7 @@ export default function DetailTokoPage() {
   const [savingUlasan, setSavingUlasan] = useState(false)
   const [sudahUlasan, setSudahUlasan] = useState(false)
   const [showFormUlasan, setShowFormUlasan] = useState(false)
-  const [profileMap, setProfileMap] = useState<Record<string, string>>({})
+  const [profileMap, setProfileMap] = useState<Record<string, any>>({})
 
   useEffect(() => { loadDetail() }, [id])
 
@@ -28,6 +29,13 @@ export default function DetailTokoPage() {
     const { data: tokoData } = await supabase
       .from('toko').select('*').eq('id', id).single()
     setToko(tokoData)
+
+    // Load profil pemilik toko (untuk centang biru)
+    if (tokoData?.user_id) {
+      const { data: ownerData } = await supabase
+        .from('profiles').select('nama, is_verified').eq('id', tokoData.user_id).single()
+      setOwnerProfile(ownerData)
+    }
 
     const { data: produkData } = await supabase
       .from('produk').select('*').eq('toko_id', id)
@@ -46,36 +54,25 @@ export default function DetailTokoPage() {
 
   async function loadUlasan(userId?: string) {
     const { data } = await supabase
-      .from('ulasan')
-      .select('*')
-      .eq('toko_id', id)
+      .from('ulasan').select('*').eq('toko_id', id)
       .order('created_at', { ascending: false })
 
     const list = data || []
     setUlasan(list)
 
-    // Hitung rata-rata rating
     if (list.length > 0) {
       const total = list.reduce((acc: number, u: any) => acc + u.rating, 0)
       setRatingRata(total / list.length)
     }
 
-    // Cek apakah user sudah ulasan
-    if (userId) {
-      setSudahUlasan(list.some((u: any) => u.user_id === userId))
-    }
+    if (userId) setSudahUlasan(list.some((u: any) => u.user_id === userId))
 
-    // Load nama dari profiles
     const userIds = [...new Set(list.map((u: any) => u.user_id))]
     if (userIds.length > 0) {
       const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, nama, username')
-        .in('id', userIds)
-      const map: Record<string, string> = {}
-      profiles?.forEach((p: any) => {
-        map[p.id] = p.nama || p.username || 'Pengguna'
-      })
+        .from('profiles').select('id, nama, username, is_verified').in('id', userIds)
+      const map: Record<string, any> = {}
+      profiles?.forEach((p: any) => { map[p.id] = p })
       setProfileMap(map)
     }
   }
@@ -84,19 +81,14 @@ export default function DetailTokoPage() {
     if (!user) { navigate('/login'); return }
     if (formUlasan.rating === 0) { toast.error('Pilih rating dulu'); return }
     if (!formUlasan.komentar.trim()) { toast.error('Komentar tidak boleh kosong'); return }
-
     setSavingUlasan(true)
     const { error } = await supabase.from('ulasan').insert({
-      toko_id: id,
-      user_id: user.id,
-      rating: formUlasan.rating,
-      komentar: formUlasan.komentar.trim(),
+      toko_id: id, user_id: user.id,
+      rating: formUlasan.rating, komentar: formUlasan.komentar.trim(),
     })
     setSavingUlasan(false)
-
-    if (error) {
-      toast.error('Gagal kirim ulasan')
-    } else {
+    if (error) { toast.error('Gagal kirim ulasan') }
+    else {
       toast.success('Ulasan berhasil dikirim! ⭐')
       setFormUlasan({ rating: 0, komentar: '' })
       setShowFormUlasan(false)
@@ -106,31 +98,19 @@ export default function DetailTokoPage() {
 
   async function hapusUlasan(ulasanId: string) {
     const { error } = await supabase.from('ulasan').delete().eq('id', ulasanId)
-    if (!error) {
-      toast.success('Ulasan dihapus')
-      await loadUlasan(user?.id)
-    }
+    if (!error) { toast.success('Ulasan dihapus'); await loadUlasan(user?.id) }
   }
 
   async function tambahKeranjang(produkItem: any) {
     if (!user) { navigate('/login'); return }
     const existing = keranjang.find(k => k.produk_id === produkItem.id)
     if (existing) {
-      const { error } = await supabase
-        .from('keranjang').update({ jumlah: existing.jumlah + 1 }).eq('id', existing.id)
-      if (!error) {
-        setKeranjang(prev => prev.map(k => k.id === existing.id ? { ...k, jumlah: k.jumlah + 1 } : k))
-        toast.success(`+1 ${produkItem.nama}`)
-      }
+      const { error } = await supabase.from('keranjang').update({ jumlah: existing.jumlah + 1 }).eq('id', existing.id)
+      if (!error) setKeranjang(prev => prev.map(k => k.id === existing.id ? { ...k, jumlah: k.jumlah + 1 } : k))
     } else {
-      const { data, error } = await supabase
-        .from('keranjang')
-        .insert({ user_id: user.id, toko_id: id, produk_id: produkItem.id, jumlah: 1 })
-        .select().single()
-      if (!error && data) {
-        setKeranjang(prev => [...prev, data])
-        toast.success(`${produkItem.nama} ditambahkan!`)
-      }
+      const { data, error } = await supabase.from('keranjang')
+        .insert({ user_id: user.id, toko_id: id, produk_id: produkItem.id, jumlah: 1 }).select().single()
+      if (!error && data) setKeranjang(prev => [...prev, data])
     }
   }
 
@@ -146,14 +126,8 @@ export default function DetailTokoPage() {
     }
   }
 
-  function getJumlah(produkId: string) {
-    return keranjang.find(k => k.produk_id === produkId)?.jumlah || 0
-  }
-
-  function totalKeranjang() {
-    return keranjang.reduce((acc, k) => acc + k.jumlah, 0)
-  }
-
+  function getJumlah(produkId: string) { return keranjang.find(k => k.produk_id === produkId)?.jumlah || 0 }
+  function totalKeranjang() { return keranjang.reduce((acc, k) => acc + k.jumlah, 0) }
   function totalHarga() {
     return keranjang.reduce((acc, k) => {
       const p = produk.find(p => p.id === k.produk_id)
@@ -168,64 +142,59 @@ export default function DetailTokoPage() {
       const p = produk.find(p => p.id === k.produk_id)
       return `${p?.nama} x${k.jumlah}`
     }).join(', ')
-    const pesanOtomatis = `Halo, saya ingin memesan: ${itemList}. Apakah tersedia?`
     await supabase.from('pesan').insert({
-      toko_id: id,
-      pengirim_id: user.id,
-      pengirim_email: user.email,
-      pembeli_id: user.id,
-      isi: pesanOtomatis,
-      is_penjual: false,
+      toko_id: id, pengirim_id: user.id, pengirim_email: user.email,
+      pembeli_id: user.id, isi: `Halo, saya ingin memesan: ${itemList}. Apakah tersedia?`, is_penjual: false,
     })
     navigate(`/chat/${id}`)
     toast.success('Pesanan dikirim ke chat!')
   }
 
   function formatHarga(harga: number) {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency', currency: 'IDR', minimumFractionDigits: 0,
-    }).format(harga)
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(harga)
   }
 
   function formatTanggal(ts: string) {
-    return new Date(ts).toLocaleDateString('id-ID', {
-      day: 'numeric', month: 'long', year: 'numeric'
-    })
+    return new Date(ts).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
   }
 
   function renderBintang(nilai: number, onClick?: (n: number) => void) {
     return (
       <div className="flex gap-0.5">
-        {[1, 2, 3, 4, 5].map(n => (
-          <button
-            key={n}
-            onClick={() => onClick?.(n)}
-            className={`text-xl ${onClick ? 'cursor-pointer hover:scale-110 transition' : 'cursor-default'} ${n <= nilai ? 'text-yellow-400' : 'text-gray-200'}`}
-          >
-            ★
-          </button>
+        {[1,2,3,4,5].map(n => (
+          <button key={n} onClick={() => onClick?.(n)}
+            className={`text-xl ${onClick ? 'cursor-pointer hover:scale-110 transition' : 'cursor-default'} ${n <= nilai ? 'text-yellow-400' : 'text-gray-200'}`}>★</button>
         ))}
       </div>
     )
   }
 
+  // Komponen centang biru inline
+  function BadgeVerifikasi({ size = 14 }: { size?: number }) {
+    return (
+      <span title="Akun Terverifikasi Lokaku" style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        width: size, height: size, background: '#3b82f6', color: 'white',
+        borderRadius: '50%', fontSize: size * 0.6, fontWeight: 'bold',
+        flexShrink: 0, boxShadow: '0 1px 3px rgba(59,130,246,0.4)',
+      }}>✓</span>
+    )
+  }
+
   const isOwner = user && toko && user.id === toko.user_id
+  const isVerified = ownerProfile?.is_verified || false
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-400 text-sm">Memuat...</p>
-      </div>
-    )
-  }
+  if (loading) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <p className="text-gray-400 text-sm">Memuat...</p>
+    </div>
+  )
 
-  if (!toko) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-400 text-sm">Toko tidak ditemukan</p>
-      </div>
-    )
-  }
+  if (!toko) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <p className="text-gray-400 text-sm">Toko tidak ditemukan</p>
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-gray-50 pb-28">
@@ -239,10 +208,8 @@ export default function DetailTokoPage() {
             {toko.jenis === 'jasa' ? '🛠️' : '🏪'}
           </div>
         )}
-        <button
-          onClick={() => navigate('/cari')}
-          className="absolute top-4 left-4 bg-white/90 backdrop-blur text-gray-700 px-3 py-1.5 rounded-xl text-sm font-semibold shadow"
-        >
+        <button onClick={() => navigate('/cari')}
+          className="absolute top-4 left-4 bg-white/90 backdrop-blur text-gray-700 px-3 py-1.5 rounded-xl text-sm font-semibold shadow">
           ← Kembali
         </button>
         <span className={`absolute top-4 right-4 text-xs px-3 py-1.5 rounded-xl font-bold shadow ${toko.is_buka ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
@@ -254,15 +221,28 @@ export default function DetailTokoPage() {
 
         {/* Info Toko */}
         <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm">
+
+          {/* Nama + centang biru */}
           <div className="flex items-start justify-between mb-1">
-            <h1 className="font-extrabold text-gray-900 text-xl">{toko.nama}</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="font-extrabold text-gray-900 text-xl">{toko.nama}</h1>
+              {isVerified && <BadgeVerifikasi size={18} />}
+            </div>
             {toko.jenis === 'jasa' && (
               <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-bold ml-2 flex-shrink-0">Jasa</span>
             )}
           </div>
+
+          {/* Badge terverifikasi label */}
+          {isVerified && (
+            <div className="flex items-center gap-1.5 mb-2">
+              <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-semibold">✓ Penjual Terverifikasi</span>
+            </div>
+          )}
+
           <span className="inline-block text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded-full font-semibold mb-2">{toko.kategori}</span>
 
-          {/* Rating ringkasan */}
+          {/* Rating */}
           {ulasan.length > 0 && (
             <div className="flex items-center gap-2 mb-3">
               {renderBintang(Math.round(ratingRata))}
@@ -275,10 +255,8 @@ export default function DetailTokoPage() {
           {toko.deskripsi && <p className="text-sm text-gray-500 leading-relaxed mb-3">{toko.deskripsi}</p>}
 
           {!isOwner && (
-            <button
-              onClick={() => navigate(`/chat/${toko.id}`)}
-              className={`w-full mt-2 text-white rounded-2xl py-3 text-sm font-bold transition shadow-sm ${toko.jenis === 'jasa' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'}`}
-            >
+            <button onClick={() => navigate(`/chat/${toko.id}`)}
+              className={`w-full mt-2 text-white rounded-2xl py-3 text-sm font-bold transition shadow-sm ${toko.jenis === 'jasa' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'}`}>
               💬 {toko.jenis === 'jasa' ? 'Hubungi Penyedia Jasa' : 'Chat dengan Penjual'}
             </button>
           )}
@@ -287,12 +265,9 @@ export default function DetailTokoPage() {
         {/* Produk */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-extrabold text-gray-900">
-              {toko.jenis === 'jasa' ? 'Layanan' : 'Produk & Layanan'}
-            </h2>
+            <h2 className="font-extrabold text-gray-900">{toko.jenis === 'jasa' ? 'Layanan' : 'Produk & Layanan'}</h2>
             <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full font-semibold">{produk.length} item</span>
           </div>
-
           {produk.length === 0 ? (
             <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm text-center">
               <span className="text-4xl mb-2 block">{toko.jenis === 'jasa' ? '🛠️' : '📦'}</span>
@@ -304,29 +279,23 @@ export default function DetailTokoPage() {
                 const jumlah = getJumlah(p.id)
                 return (
                   <div key={p.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-                    {p.foto_url && (
-                      <img src={p.foto_url} alt={p.nama} className="w-full h-36 object-cover" />
-                    )}
+                    {p.foto_url && <img src={p.foto_url} alt={p.nama} className="w-full h-36 object-cover" />}
                     <div className="p-4">
                       <h3 className="font-bold text-gray-900 text-sm">{p.nama}</h3>
                       {p.deskripsi && <p className="text-xs text-gray-400 mt-0.5">{p.deskripsi}</p>}
                       <span className="text-sm font-extrabold text-red-600 mt-1 block">{formatHarga(p.harga)}</span>
-                      {!isOwner && (
-                        jumlah === 0 ? (
-                          <button
-                            onClick={() => tambahKeranjang(p)}
-                            className="w-full mt-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl py-2.5 text-sm font-bold transition hover:from-red-600 hover:to-red-700"
-                          >
-                            🛒 Tambah ke Keranjang
-                          </button>
-                        ) : (
-                          <div className="flex items-center justify-between bg-gray-50 rounded-xl p-1 mt-3">
-                            <button onClick={() => kurangKeranjang(p)} className="w-10 h-10 bg-white rounded-lg flex items-center justify-center font-bold text-gray-700 shadow-sm hover:bg-gray-100 transition text-lg">−</button>
-                            <span className="font-extrabold text-gray-900">{jumlah}</span>
-                            <button onClick={() => tambahKeranjang(p)} className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center font-bold text-white shadow-sm hover:bg-red-700 transition text-lg">+</button>
-                          </div>
-                        )
-                      )}
+                      {!isOwner && (jumlah === 0 ? (
+                        <button onClick={() => tambahKeranjang(p)}
+                          className="w-full mt-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl py-2.5 text-sm font-bold transition hover:from-red-600 hover:to-red-700">
+                          🛒 Tambah ke Keranjang
+                        </button>
+                      ) : (
+                        <div className="flex items-center justify-between bg-gray-50 rounded-xl p-1 mt-3">
+                          <button onClick={() => kurangKeranjang(p)} className="w-10 h-10 bg-white rounded-lg flex items-center justify-center font-bold text-gray-700 shadow-sm hover:bg-gray-100 transition text-lg">−</button>
+                          <span className="font-extrabold text-gray-900">{jumlah}</span>
+                          <button onClick={() => tambahKeranjang(p)} className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center font-bold text-white shadow-sm hover:bg-red-700 transition text-lg">+</button>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )
@@ -348,72 +317,49 @@ export default function DetailTokoPage() {
             )}
           </div>
 
-          {/* Tombol tulis ulasan */}
           {!isOwner && user && !sudahUlasan && (
-            <button
-              onClick={() => setShowFormUlasan(!showFormUlasan)}
-              className="w-full mb-3 border-2 border-dashed border-yellow-300 bg-yellow-50 text-yellow-700 text-sm py-3 rounded-2xl font-semibold hover:bg-yellow-100 transition"
-            >
+            <button onClick={() => setShowFormUlasan(!showFormUlasan)}
+              className="w-full mb-3 border-2 border-dashed border-yellow-300 bg-yellow-50 text-yellow-700 text-sm py-3 rounded-2xl font-semibold hover:bg-yellow-100 transition">
               ⭐ Tulis Ulasan
             </button>
           )}
 
           {!user && (
-            <button
-              onClick={() => navigate('/login')}
-              className="w-full mb-3 border-2 border-dashed border-gray-200 text-gray-400 text-sm py-3 rounded-2xl font-semibold hover:bg-gray-50 transition"
-            >
+            <button onClick={() => navigate('/login')}
+              className="w-full mb-3 border-2 border-dashed border-gray-200 text-gray-400 text-sm py-3 rounded-2xl font-semibold hover:bg-gray-50 transition">
               Login untuk memberikan ulasan
             </button>
           )}
 
-          {/* Form ulasan */}
           {showFormUlasan && (
             <div className="bg-white rounded-3xl border border-yellow-100 shadow-sm p-5 mb-3">
               <p className="text-sm font-bold text-gray-700 mb-3">Berikan Ulasanmu</p>
-
-              {/* Pilih bintang */}
               <div className="mb-3">
                 <p className="text-xs text-gray-400 mb-1.5">Rating</p>
                 {renderBintang(formUlasan.rating, (n) => setFormUlasan(f => ({ ...f, rating: n })))}
                 {formUlasan.rating > 0 && (
                   <p className="text-xs text-yellow-600 mt-1 font-semibold">
-                    {['', 'Sangat Buruk', 'Buruk', 'Cukup', 'Bagus', 'Sangat Bagus'][formUlasan.rating]}
+                    {['','Sangat Buruk','Buruk','Cukup','Bagus','Sangat Bagus'][formUlasan.rating]}
                   </p>
                 )}
               </div>
-
-              {/* Komentar */}
               <div className="mb-3">
                 <p className="text-xs text-gray-400 mb-1.5">Komentar</p>
-                <textarea
-                  value={formUlasan.komentar}
-                  onChange={e => setFormUlasan(f => ({ ...f, komentar: e.target.value }))}
-                  placeholder="Ceritakan pengalamanmu..."
-                  rows={3}
-                  className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-yellow-400 bg-gray-50 transition resize-none"
-                />
+                <textarea value={formUlasan.komentar} onChange={e => setFormUlasan(f => ({ ...f, komentar: e.target.value }))}
+                  placeholder="Ceritakan pengalamanmu..." rows={3}
+                  className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-yellow-400 bg-gray-50 transition resize-none" />
               </div>
-
               <div className="flex gap-2">
-                <button
-                  onClick={() => setShowFormUlasan(false)}
-                  className="flex-1 border-2 border-gray-100 text-gray-500 text-sm py-2.5 rounded-xl font-semibold hover:bg-gray-50 transition"
-                >
-                  Batal
-                </button>
-                <button
-                  onClick={kirimUlasan}
-                  disabled={savingUlasan}
-                  className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-white text-sm py-2.5 rounded-xl font-bold transition disabled:opacity-50"
-                >
+                <button onClick={() => setShowFormUlasan(false)}
+                  className="flex-1 border-2 border-gray-100 text-gray-500 text-sm py-2.5 rounded-xl font-semibold hover:bg-gray-50 transition">Batal</button>
+                <button onClick={kirimUlasan} disabled={savingUlasan}
+                  className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-white text-sm py-2.5 rounded-xl font-bold transition disabled:opacity-50">
                   {savingUlasan ? 'Mengirim...' : 'Kirim Ulasan'}
                 </button>
               </div>
             </div>
           )}
 
-          {/* List ulasan */}
           {ulasan.length === 0 ? (
             <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm text-center">
               <span className="text-4xl mb-2 block">⭐</span>
@@ -422,40 +368,44 @@ export default function DetailTokoPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {ulasan.map(u => (
-                <div key={u.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                        {(profileMap[u.user_id] || 'P').charAt(0).toUpperCase()}
+              {ulasan.map(u => {
+                const uProfile = profileMap[u.user_id]
+                return (
+                  <div key={u.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                          {(uProfile?.nama || 'P').charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          {/* Nama + centang biru di ulasan */}
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-bold text-gray-800">{uProfile?.nama || 'Pengguna'}</p>
+                            {uProfile?.is_verified && (
+                              <span title="Terverifikasi" style={{
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                width: 13, height: 13, background: '#3b82f6', color: 'white',
+                                borderRadius: '50%', fontSize: 8, fontWeight: 'bold',
+                              }}>✓</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-400">{formatTanggal(u.created_at)}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-bold text-gray-800">
-                          {profileMap[u.user_id] || 'Pengguna'}
-                        </p>
-                        <p className="text-xs text-gray-400">{formatTanggal(u.created_at)}</p>
-                      </div>
+                      {user && u.user_id === user.id && (
+                        <button onClick={() => hapusUlasan(u.id)} className="text-xs text-red-400 hover:text-red-600 transition">Hapus</button>
+                      )}
                     </div>
-                    {user && u.user_id === user.id && (
-                      <button
-                        onClick={() => hapusUlasan(u.id)}
-                        className="text-xs text-red-400 hover:text-red-600 transition"
-                      >
-                        Hapus
-                      </button>
-                    )}
+                    {renderBintang(u.rating)}
+                    <p className="text-sm text-gray-600 mt-2 leading-relaxed">{u.komentar}</p>
                   </div>
-                  {renderBintang(u.rating)}
-                  <p className="text-sm text-gray-600 mt-2 leading-relaxed">{u.komentar}</p>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
-
       </div>
 
-      {/* Keranjang sticky */}
       {totalKeranjang() > 0 && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 shadow-lg">
           <div className="max-w-lg mx-auto">
@@ -463,16 +413,13 @@ export default function DetailTokoPage() {
               <span className="text-xs text-gray-400 font-semibold">{totalKeranjang()} item dipilih</span>
               <span className="text-sm font-extrabold text-red-600">{formatHarga(totalHarga())}</span>
             </div>
-            <button
-              onClick={pesanSekarang}
-              className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl py-3.5 text-sm font-extrabold transition shadow-lg shadow-red-100 hover:from-red-600 hover:to-red-700"
-            >
+            <button onClick={pesanSekarang}
+              className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl py-3.5 text-sm font-extrabold transition shadow-lg shadow-red-100 hover:from-red-600 hover:to-red-700">
               🛒 Pesan Sekarang ({totalKeranjang()})
             </button>
           </div>
         </div>
       )}
-
     </div>
   )
 }
