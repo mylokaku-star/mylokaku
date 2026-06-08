@@ -1,5 +1,5 @@
 // ============================================================
-// LOKAKU — Master Kategori Toko & Jasa
+// LOKAKU — Master Kategori Toko, Jasa & Preloved
 // ============================================================
 
 export const KATEGORI_TOKO: { grup: string; items: string[] }[] = [
@@ -119,7 +119,48 @@ export const KATEGORI_JASA: { grup: string; items: string[] }[] = [
   },
 ]
 
-// Flat list untuk select/filter (dengan nama grup sebagai prefix)
+export const KATEGORI_PRELOVED: { grup: string; items: string[] }[] = [
+  {
+    grup: 'Kendaraan & Otomotif Bekas',
+    items: [
+      'Mobil Bekas Pribadi',
+      'Motor Bekas Pribadi',
+      'Sepeda Anak & Dewasa',
+      'Aksesori & Suku Cadang Bekas',
+    ],
+  },
+  {
+    grup: 'Gadget & Elektronik Bekas',
+    items: [
+      'HP, Tablet & Laptop Bekas',
+      'TV, Kulkas & Mesin Cuci Bekas',
+      'Kipas, Rice Cooker & Elektronik Kecil',
+    ],
+  },
+  {
+    grup: 'Perabotan & Alat Rumah Tangga',
+    items: [
+      'Kasur, Lemari & Sofa Bekas',
+      'Meja, Kursi & Rak Buku',
+      'Alat Dapur Layak Pakai',
+    ],
+  },
+  {
+    grup: 'Fashion & Keperluan Anak (Thrift)',
+    items: [
+      'Pakaian & Jaket Preloved',
+      'Stroller & Mainan Anak Bekas',
+      'Tas & Sepatu Bekas Layak Pakai',
+    ],
+  },
+]
+
+// Flat list
 export const KATEGORI_TOKO_FLAT: string[] = KATEGORI_TOKO.flatMap(g => g.items)
 export const KATEGORI_JASA_FLAT: string[] = KATEGORI_JASA.flatMap(g => g.items)
-export const SEMUA_KATEGORI_FLAT: string[] = [...KATEGORI_TOKO_FLAT, ...KATEGORI_JASA_FLAT]
+export const KATEGORI_PRELOVED_FLAT: string[] = KATEGORI_PRELOVED.flatMap(g => g.items)
+export const SEMUA_KATEGORI_FLAT: string[] = [
+  ...KATEGORI_TOKO_FLAT,
+  ...KATEGORI_JASA_FLAT,
+  ...KATEGORI_PRELOVED_FLAT,
+]

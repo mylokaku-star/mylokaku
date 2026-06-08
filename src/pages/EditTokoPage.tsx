@@ -2,7 +2,15 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
-import { KATEGORI_TOKO, KATEGORI_JASA } from '../lib/kategori'
+import { KATEGORI_TOKO, KATEGORI_JASA, KATEGORI_PRELOVED } from '../lib/kategori'
+
+type JenisDaftar = 'toko' | 'jasa' | 'preloved'
+
+const JENIS_CONFIG = {
+  toko:     { icon: '🏪', label: 'Toko',    border: 'border-green-500', bg: 'bg-green-50', text: 'text-green-700', btn: 'from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-green-100' },
+  jasa:     { icon: '🛠️', label: 'Jasa',    border: 'border-blue-500',  bg: 'bg-blue-50',  text: 'text-blue-700',  btn: 'from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-blue-100' },
+  preloved: { icon: '♻️', label: 'Preloved', border: 'border-purple-500', bg: 'bg-purple-50', text: 'text-purple-700', btn: 'from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 shadow-purple-100' },
+}
 
 export default function EditTokoPage() {
   const navigate = useNavigate()
@@ -11,7 +19,7 @@ export default function EditTokoPage() {
   const [loadingLokasi, setLoadingLokasi] = useState(false)
   const [uploadingFoto, setUploadingFoto] = useState(false)
   const [tokoId, setTokoId] = useState('')
-  const [jenis, setJenis] = useState<'toko' | 'jasa'>('toko')
+  const [jenis, setJenis] = useState<JenisDaftar>('toko')
   const [form, setForm] = useState({
     nama: '', deskripsi: '', kategori: '', alamat: '', telepon: '', lat: '', lng: '', foto_url: '',
   })
@@ -46,7 +54,7 @@ export default function EditTokoPage() {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
 
-  function handleJenisChange(j: 'toko' | 'jasa') {
+  function handleJenisChange(j: JenisDaftar) {
     setJenis(j)
     setForm(f => ({ ...f, kategori: '' }))
   }
@@ -80,7 +88,9 @@ export default function EditTokoPage() {
   }
 
   async function handleSave() {
-    if (!form.nama || !form.kategori || !form.alamat) { toast.error('Nama, kategori, dan alamat wajib diisi'); return }
+    if (!form.nama || !form.kategori || !form.alamat) {
+      toast.error('Nama, kategori, dan alamat wajib diisi'); return
+    }
     setSaving(true)
     const { error } = await supabase.from('toko').update({
       nama: form.nama,
@@ -104,7 +114,13 @@ export default function EditTokoPage() {
     </div>
   )
 
-  const grupList = jenis === 'toko' ? KATEGORI_TOKO : KATEGORI_JASA
+  const cfg = JENIS_CONFIG[jenis]
+  const grupList = jenis === 'toko' ? KATEGORI_TOKO : jenis === 'jasa' ? KATEGORI_JASA : KATEGORI_PRELOVED
+
+  const labelNama = jenis === 'toko' ? 'Nama Toko' : jenis === 'jasa' ? 'Nama / Brand Jasa' : 'Nama / Judul Barang'
+  const labelAlamat = jenis === 'toko' ? 'Alamat Toko' : jenis === 'jasa' ? 'Area Layanan' : 'Lokasi Penjual'
+  const labelDeskripsi = jenis === 'toko' ? 'Deskripsi Toko' : jenis === 'jasa' ? 'Deskripsi Jasa' : 'Deskripsi Barang (kondisi, harga, dll)'
+  const placeholderDeskripsi = jenis === 'preloved' ? 'contoh: Kondisi 90%, jarang dipakai. Harga Rp 2.500.000 nego.' : jenis === 'jasa' ? 'Jelaskan jasa yang ditawarkan...' : ''
 
   return (
     <div className="min-h-screen bg-gray-50 pb-8">
@@ -113,8 +129,10 @@ export default function EditTokoPage() {
       <div className="bg-white border-b border-gray-100 px-4 py-4 flex items-center gap-3 sticky top-0 z-10 shadow-sm">
         <button onClick={() => navigate('/dashboard')} className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">←</button>
         <div>
-          <h1 className="font-extrabold text-gray-900 text-base">Edit {jenis === 'toko' ? 'Toko' : 'Jasa'}</h1>
-          <p className="text-xs text-gray-400">Update info {jenis === 'toko' ? 'toko' : 'jasa'} kamu</p>
+          <h1 className="font-extrabold text-gray-900 text-base">
+            Edit {cfg.icon} {cfg.label}
+          </h1>
+          <p className="text-xs text-gray-400">Update info {cfg.label.toLowerCase()} kamu</p>
         </div>
       </div>
 
@@ -126,7 +144,7 @@ export default function EditTokoPage() {
             <img src={form.foto_url} alt="Foto" className="w-full h-40 object-cover" />
           ) : (
             <div className="w-full h-28 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center text-4xl">
-              {jenis === 'toko' ? '🏪' : '🛠️'}
+              {cfg.icon}
             </div>
           )}
           <div className="p-4">
@@ -137,32 +155,31 @@ export default function EditTokoPage() {
           </div>
         </div>
 
-        {/* Pilih Jenis */}
+        {/* Pilih Jenis — 3 tombol */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
           <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-3">Jenis</p>
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => handleJenisChange('toko')}
-              className={`flex items-center justify-center gap-2 py-3 rounded-2xl border-2 transition font-bold text-sm ${jenis === 'toko' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-400'}`}>
-              <span>🏪</span> Toko
-            </button>
-            <button onClick={() => handleJenisChange('jasa')}
-              className={`flex items-center justify-center gap-2 py-3 rounded-2xl border-2 transition font-bold text-sm ${jenis === 'jasa' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-100 bg-gray-50 text-gray-400'}`}>
-              <span>🛠️</span> Jasa
-            </button>
+          <div className="grid grid-cols-3 gap-2">
+            {(Object.entries(JENIS_CONFIG) as [JenisDaftar, typeof JENIS_CONFIG.toko][]).map(([j, c]) => (
+              <button key={j} onClick={() => handleJenisChange(j)}
+                className={`flex items-center justify-center gap-1.5 py-3 rounded-2xl border-2 transition font-bold text-xs ${jenis === j ? `${c.border} ${c.bg} ${c.text}` : 'border-gray-100 bg-gray-50 text-gray-400'}`}>
+                <span>{c.icon}</span> {c.label}
+              </button>
+            ))}
           </div>
         </div>
 
         {/* Form Info */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-4">
-          <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Info {jenis === 'toko' ? 'Toko' : 'Jasa'}</p>
+          <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">
+            Info {cfg.label}
+          </p>
 
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">{jenis === 'toko' ? 'Nama Toko' : 'Nama / Brand Jasa'} *</label>
+            <label className="text-sm font-semibold text-gray-700 block mb-1.5">{labelNama} *</label>
             <input name="nama" value={form.nama} onChange={handleChange}
               className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
           </div>
 
-          {/* Kategori dengan optgroup */}
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">Kategori *</label>
             <select name="kategori" value={form.kategori} onChange={handleChange}
@@ -170,18 +187,15 @@ export default function EditTokoPage() {
               <option value="">Pilih kategori</option>
               {grupList.map(grup => (
                 <optgroup key={grup.grup} label={`── ${grup.grup}`}>
-                  {grup.items.map(item => (
-                    <option key={item} value={item}>{item}</option>
-                  ))}
+                  {grup.items.map(item => <option key={item} value={item}>{item}</option>)}
                 </optgroup>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">{jenis === 'toko' ? 'Alamat Toko' : 'Area Layanan'} *</label>
+            <label className="text-sm font-semibold text-gray-700 block mb-1.5">{labelAlamat} *</label>
             <input name="alamat" value={form.alamat} onChange={handleChange}
-              placeholder={jenis === 'jasa' ? 'contoh: Kelurahan Sukamaju, Kec. Cimanggis' : ''}
               className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
           </div>
 
@@ -192,9 +206,9 @@ export default function EditTokoPage() {
           </div>
 
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">{jenis === 'toko' ? 'Deskripsi Toko' : 'Deskripsi Jasa'}</label>
+            <label className="text-sm font-semibold text-gray-700 block mb-1.5">{labelDeskripsi}</label>
             <textarea name="deskripsi" value={form.deskripsi} onChange={handleChange} rows={3}
-              placeholder={jenis === 'jasa' ? 'Jelaskan jasa yang ditawarkan, pengalaman, harga, dll...' : ''}
+              placeholder={placeholderDeskripsi}
               className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition resize-none" />
           </div>
         </div>
@@ -219,8 +233,8 @@ export default function EditTokoPage() {
 
         {/* Simpan */}
         <button onClick={handleSave} disabled={saving}
-          className={`w-full text-white rounded-2xl py-4 text-sm font-extrabold transition shadow-lg disabled:opacity-50 ${jenis === 'toko' ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-green-100' : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-blue-100'}`}>
-          {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
+          className={`w-full text-white rounded-2xl py-4 text-sm font-extrabold transition shadow-lg disabled:opacity-50 bg-gradient-to-r ${cfg.btn}`}>
+          {saving ? 'Menyimpan...' : `${cfg.icon} Simpan Perubahan`}
         </button>
 
       </div>
