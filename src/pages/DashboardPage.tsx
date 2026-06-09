@@ -26,7 +26,6 @@ export default function DashboardPage() {
   }, [])
 
   async function loadToko(userId: string) {
-    // Load profil user
     const { data: profileData } = await supabase
       .from('profiles').select('nama, is_admin, is_verified').eq('id', userId).single()
     setIsAdmin(profileData?.is_admin || false)
@@ -40,7 +39,6 @@ export default function DashboardPage() {
       setIsBuka(data.is_buka)
       loadUnread(data.id)
 
-      // Realtime unread + toast notifikasi
       supabase
         .channel(`unread-${data.id}`)
         .on('postgres_changes', {
@@ -111,7 +109,6 @@ export default function DashboardPage() {
             <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center text-white font-black text-lg">L</div>
             <span className="font-extrabold text-white text-lg">Lokaku</span>
           </div>
-          {/* Tombol admin di header */}
           {isAdmin && (
             <button onClick={() => navigate('/admin')}
               className="flex items-center gap-1.5 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-xl font-bold hover:bg-gray-700 transition">
@@ -120,7 +117,6 @@ export default function DashboardPage() {
           )}
         </div>
         <p className="text-green-100 text-xs mt-2">Selamat datang,</p>
-        {/* Nama + badge verifikasi */}
         <div className="flex items-center gap-2 mt-0.5">
           <p className="text-white font-bold text-sm">
             {namaUser || user?.email}
@@ -234,3 +230,21 @@ export default function DashboardPage() {
                   <p className="font-bold text-white text-sm">Dashboard Admin</p>
                   <p className="text-xs text-gray-400 mt-0.5">Kelola verifikasi KYC & pengguna</p>
                 </div>
+              </button>
+            )}
+          </>
+        ) : (
+          <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 text-center">
+            <div className="text-5xl mb-4">🏪</div>
+            <h2 className="font-extrabold text-gray-900 text-lg mb-2">Belum punya toko</h2>
+            <p className="text-gray-400 text-sm mb-6">Buat toko pertamamu dan mulai berjualan sekarang</p>
+            <button onClick={() => navigate('/buat-toko')}
+              className="bg-green-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-green-700 transition text-sm">
+              + Buat Toko Sekarang
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
