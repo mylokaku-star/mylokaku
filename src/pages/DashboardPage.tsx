@@ -10,6 +10,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [isBuka, setIsBuka] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [isVerified, setIsVerified] = useState(false)
+  const [namaUser, setNamaUser] = useState('')
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -23,6 +26,13 @@ export default function DashboardPage() {
   }, [])
 
   async function loadToko(userId: string) {
+    // Load profil user
+    const { data: profileData } = await supabase
+      .from('profiles').select('nama, is_admin, is_verified').eq('id', userId).single()
+    setIsAdmin(profileData?.is_admin || false)
+    setIsVerified(profileData?.is_verified || false)
+    setNamaUser(profileData?.nama || '')
+
     const { data } = await supabase
       .from('toko').select('*').eq('user_id', userId).single()
     if (data) {
@@ -42,20 +52,11 @@ export default function DashboardPage() {
           const msg = payload.new as any
           if (!msg.is_penjual) {
             setUnreadCount(prev => prev + 1)
-
-            // Toast notifikasi pesan baru
             toast('💬 Pesan baru masuk!', {
-              description: msg.isi?.length > 50
-                ? msg.isi.slice(0, 50) + '...'
-                : msg.isi,
+              description: msg.isi?.length > 50 ? msg.isi.slice(0, 50) + '...' : msg.isi,
               duration: 5000,
-              action: {
-                label: 'Balas',
-                onClick: () => navigate(`/chat/${data.id}`),
-              },
+              action: { label: 'Balas', onClick: () => navigate(`/chat/${data.id}`) },
             })
-
-            // Judul tab berkedip
             let blinkInterval: any
             let original = document.title
             let blink = false
@@ -63,15 +64,8 @@ export default function DashboardPage() {
               document.title = blink ? `💬 Pesan Baru - Lokaku` : original
               blink = !blink
             }, 1000)
-            // Stop berkedip setelah 10 detik atau waktu tab difokus
-            setTimeout(() => {
-              clearInterval(blinkInterval)
-              document.title = original
-            }, 10000)
-            window.addEventListener('focus', () => {
-              clearInterval(blinkInterval)
-              document.title = original
-            }, { once: true })
+            setTimeout(() => { clearInterval(blinkInterval); document.title = original }, 10000)
+            window.addEventListener('focus', () => { clearInterval(blinkInterval); document.title = original }, { once: true })
           }
         })
         .subscribe()
@@ -81,19 +75,15 @@ export default function DashboardPage() {
 
   async function loadUnread(tokoId: string) {
     const { count } = await supabase
-      .from('pesan')
-      .select('*', { count: 'exact', head: true })
-      .eq('toko_id', tokoId)
-      .eq('is_penjual', false)
-      .eq('is_read', false)
+      .from('pesan').select('*', { count: 'exact', head: true })
+      .eq('toko_id', tokoId).eq('is_penjual', false).eq('is_read', false)
     setUnreadCount(count || 0)
   }
 
   async function toggleStatus() {
     if (!toko) return
     const newStatus = !isBuka
-    const { error } = await supabase
-      .from('toko').update({ is_buka: newStatus }).eq('id', toko.id)
+    const { error } = await supabase.from('toko').update({ is_buka: newStatus }).eq('id', toko.id)
     if (!error) {
       setIsBuka(newStatus)
       toast.success(newStatus ? 'Toko sekarang BUKA! 🎉' : 'Toko sekarang TUTUP')
@@ -114,15 +104,37 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
 
+      {/* Header */}
       <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 pt-6 pb-8">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center text-white font-black text-lg">L</div>
             <span className="font-extrabold text-white text-lg">Lokaku</span>
           </div>
+          {/* Tombol admin di header */}
+          {isAdmin && (
+            <button onClick={() => navigate('/admin')}
+              className="flex items-center gap-1.5 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-xl font-bold hover:bg-gray-700 transition">
+              🛡️ Admin
+            </button>
+          )}
         </div>
         <p className="text-green-100 text-xs mt-2">Selamat datang,</p>
-        <p className="text-white font-bold text-sm">{user?.email}</p>
+        {/* Nama + badge verifikasi */}
+        <div className="flex items-center gap-2 mt-0.5">
+          <p className="text-white font-bold text-sm">
+            {namaUser || user?.email}
+          </p>
+          {isVerified && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: '3px',
+              background: '#3b82f6', color: 'white', borderRadius: '99px',
+              padding: '1px 7px', fontSize: '10px', fontWeight: 'bold',
+            }}>
+              ✓ Terverifikasi
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="max-w-lg mx-auto px-4 -mt-4 space-y-4">
@@ -133,7 +145,9 @@ export default function DashboardPage() {
               {toko.foto_url ? (
                 <img src={toko.foto_url} alt={toko.nama} className="w-full h-36 object-cover" />
               ) : (
-                <div className="w-full h-24 bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center text-4xl">🏪</div>
+                <div className={`w-full h-24 flex items-center justify-center text-4xl ${toko.jenis === 'jasa' ? 'bg-gradient-to-br from-blue-50 to-blue-100' : toko.jenis === 'preloved' ? 'bg-gradient-to-br from-purple-50 to-purple-100' : 'bg-gradient-to-br from-green-50 to-green-100'}`}>
+                  {toko.jenis === 'jasa' ? '🛠️' : toko.jenis === 'preloved' ? '♻️' : '🏪'}
+                </div>
               )}
               <div className="p-5">
                 <div className="flex items-start justify-between mb-4">
@@ -146,44 +160,34 @@ export default function DashboardPage() {
                     {isBuka ? '🟢 BUKA' : '🔴 TUTUP'}
                   </span>
                 </div>
-                <button
-                  onClick={toggleStatus}
-                  className={`w-full py-3.5 rounded-2xl text-sm font-extrabold transition shadow-sm ${isBuka ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-100' : 'bg-green-600 hover:bg-green-700 text-white shadow-green-100'}`}
-                >
+                <button onClick={toggleStatus}
+                  className={`w-full py-3.5 rounded-2xl text-sm font-extrabold transition shadow-sm ${isBuka ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-100' : 'bg-green-600 hover:bg-green-700 text-white shadow-green-100'}`}>
                   {isBuka ? '🔴 Tutup Toko Sekarang' : '🟢 Buka Toko Sekarang'}
                 </button>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => navigate('/edit-toko')}
-                className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition"
-              >
+              <button onClick={() => navigate('/edit-toko')}
+                className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition">
                 <span className="text-2xl mb-2 block">✏️</span>
                 <p className="font-bold text-gray-800 text-sm">Edit Toko</p>
                 <p className="text-xs text-gray-400 mt-0.5">Info & foto toko</p>
               </button>
-              <button
-                onClick={() => navigate('/produk')}
-                className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition"
-              >
+              <button onClick={() => navigate('/produk')}
+                className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition">
                 <span className="text-2xl mb-2 block">📦</span>
                 <p className="font-bold text-gray-800 text-sm">Kelola Produk</p>
                 <p className="text-xs text-gray-400 mt-0.5">Tambah & edit produk</p>
               </button>
-              <button
-                onClick={() => navigate(`/toko/${toko.id}`)}
-                className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition"
-              >
+              <button onClick={() => navigate(`/toko/${toko.id}`)}
+                className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition">
                 <span className="text-2xl mb-2 block">👁️</span>
                 <p className="font-bold text-gray-800 text-sm">Lihat Toko</p>
                 <p className="text-xs text-gray-400 mt-0.5">Tampilan pembeli</p>
               </button>
-              <button
-                onClick={() => navigate(`/chat/${toko.id}`)}
-                className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition relative"
-              >
+              <button onClick={() => navigate(`/chat/${toko.id}`)}
+                className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition relative">
                 {unreadCount > 0 && (
                   <span className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center animate-bounce">
                     {unreadCount > 9 ? '9+' : unreadCount}
@@ -196,41 +200,37 @@ export default function DashboardPage() {
                 </p>
               </button>
             </div>
-          </>
-        ) : (
-          <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm text-center mt-4">
-            <span className="text-5xl mb-4 block">🏪</span>
-            <h3 className="font-extrabold text-gray-900 text-lg mb-2">Belum punya toko</h3>
-            <p className="text-gray-400 text-sm mb-6">Daftarkan tokomu sekarang dan mulai ditemukan pembeli di sekitarmu!</p>
-            <button
-              onClick={() => navigate('/buat-toko')}
-              className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white font-extrabold py-3.5 rounded-2xl text-sm shadow-lg shadow-red-100 hover:from-red-600 hover:to-red-700 transition"
-            >
-              + Buat Toko Sekarang
-            </button>
-          </div>
-        )}
-      </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex shadow-lg">
-        <button onClick={() => navigate('/cari')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
-          <span className="text-lg">🔍</span>
-          <span className="text-xs font-medium text-gray-400">Cari</span>
-        </button>
-        <button onClick={() => navigate('/peta')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
-          <span className="text-lg">🗺️</span>
-          <span className="text-xs font-medium text-gray-400">Peta</span>
-        </button>
-        <button onClick={() => navigate('/dashboard')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
-          <span className="text-lg">🏪</span>
-          <span className="text-xs font-bold text-red-600">Toko</span>
-        </button>
-        <button onClick={() => navigate('/profil')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
-          <span className="text-lg">👤</span>
-          <span className="text-xs font-medium text-gray-400">Profil</span>
-        </button>
-      </div>
+            {/* Verifikasi akun */}
+            <div className={`rounded-2xl p-4 border shadow-sm flex items-center justify-between ${isVerified ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-100'}`}>
+              <div>
+                <p className="text-sm font-bold text-gray-800">
+                  {isVerified ? '✓ Akun Terverifikasi' : 'Verifikasi Akun'}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {isVerified ? 'Centang biru aktif di profilmu' : 'Dapatkan centang biru untuk kepercayaan lebih'}
+                </p>
+              </div>
+              {isVerified ? (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  width: 32, height: 32, background: '#3b82f6', color: 'white',
+                  borderRadius: '50%', fontSize: 16, fontWeight: 'bold', flexShrink: 0,
+                }}>✓</span>
+              ) : (
+                <button onClick={() => navigate('/verifikasi')}
+                  className="text-xs bg-blue-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-blue-700 transition flex-shrink-0">
+                  Ajukan →
+                </button>
+              )}
+            </div>
 
-    </div>
-  )
-}
+            {/* Tombol admin — hanya muncul untuk admin */}
+            {isAdmin && (
+              <button onClick={() => navigate('/admin')}
+                className="w-full bg-gray-900 rounded-2xl p-4 border border-gray-700 shadow-sm text-left hover:bg-gray-800 transition flex items-center gap-3">
+                <span className="text-2xl">🛡️</span>
+                <div>
+                  <p className="font-bold text-white text-sm">Dashboard Admin</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Kelola verifikasi KYC & pengguna</p>
+                </div>

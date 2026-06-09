@@ -12,6 +12,7 @@ import ProdukPage from './pages/ProdukPage'
 import ProfilPage from './pages/ProfilPage'
 import ChatPage from './pages/ChatPage'
 import VerifikasiPage from './pages/VerifikasiPage'
+import AdminPage from './pages/AdminPage'
 
 function App() {
   return (
@@ -29,8 +30,7 @@ function App() {
       <Route path="/profil" element={<ProfilPage />} />
       <Route path="/chat/:tokoId" element={<ChatPage />} />
       <Route path="/verifikasi" element={<VerifikasiPage />} />
+      <Route path="/admin" element={<AdminPage />} />
     </Routes>
   )
 }
-
-export default App
