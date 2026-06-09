@@ -14,7 +14,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 })
 
-// Buat custom marker icon berdasarkan kategori
 function buatCustomIcon(kategori: string, jenis?: string) {
   const emoji = getIconKategori(kategori, jenis)
   const warna = getWarnaMarker(jenis)
@@ -60,7 +59,6 @@ function buatCustomIcon(kategori: string, jenis?: string) {
   })
 }
 
-// Marker posisi user
 function buatUserIcon() {
   const html = `
     <div style="
@@ -80,7 +78,6 @@ function buatUserIcon() {
   })
 }
 
-// Komponen untuk update center peta
 function SetCenter({ center }: { center: [number, number] }) {
   const map = useMap()
   useEffect(() => { map.setView(center, 14) }, [center])
@@ -93,7 +90,7 @@ export default function PetaPage() {
   const [loading, setLoading] = useState(true)
   const [center, setCenter] = useState<[number, number]>([-6.2088, 106.8456])
   const [userPos, setUserPos] = useState<[number, number] | null>(null)
-  const [filterJenis, setFilterJenis] = useState<'semua' | 'toko' | 'jasa'>('semua')
+  const [filterJenis, setFilterJenis] = useState<'semua' | 'toko' | 'jasa' | 'preloved'>('semua')
 
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
@@ -119,13 +116,15 @@ export default function PetaPage() {
   }
 
   const tokoFiltered = toko.filter(t => {
-    if (filterJenis === 'toko') return !t.jenis || t.jenis === 'toko'
-    if (filterJenis === 'jasa') return t.jenis === 'jasa'
+    if (filterJenis === 'toko')     return !t.jenis || t.jenis === 'toko'
+    if (filterJenis === 'jasa')     return t.jenis === 'jasa'
+    if (filterJenis === 'preloved') return t.jenis === 'preloved'
     return true
   })
 
-  const jumlahToko = toko.filter(t => !t.jenis || t.jenis === 'toko').length
-  const jumlahJasa = toko.filter(t => t.jenis === 'jasa').length
+  const jumlahToko     = toko.filter(t => !t.jenis || t.jenis === 'toko').length
+  const jumlahJasa     = toko.filter(t => t.jenis === 'jasa').length
+  const jumlahPreloved = toko.filter(t => t.jenis === 'preloved').length
 
   return (
     <div className="min-h-screen bg-gray-50 pb-16">
@@ -136,23 +135,24 @@ export default function PetaPage() {
           <div className="w-7 h-7 bg-green-600 rounded-lg flex items-center justify-center text-white text-xs font-bold">L</div>
           <span className="font-bold text-gray-800">Peta Sekitar</span>
           <span className="ml-auto text-xs text-gray-400">
-            {jumlahToko} toko · {jumlahJasa} jasa
+            {jumlahToko} toko · {jumlahJasa} jasa · {jumlahPreloved} preloved
           </span>
         </div>
 
-        {/* Filter Toko/Jasa */}
-        <div className="flex gap-2">
+        {/* Filter */}
+        <div className="flex gap-2 overflow-x-auto pb-0.5">
           {([
-            { val: 'semua', label: '🏠 Semua' },
-            { val: 'toko', label: '🏪 Toko' },
-            { val: 'jasa', label: '🛠️ Jasa' },
+            { val: 'semua',    label: '🏠 Semua',    aktif: 'bg-green-600 border-green-600' },
+            { val: 'toko',     label: '🏪 Toko',     aktif: 'bg-green-600 border-green-600' },
+            { val: 'jasa',     label: '🛠️ Jasa',     aktif: 'bg-blue-600 border-blue-600' },
+            { val: 'preloved', label: '♻️ Preloved', aktif: 'bg-amber-500 border-amber-500' },
           ] as const).map(f => (
             <button
               key={f.val}
               onClick={() => setFilterJenis(f.val)}
-              className={`text-xs px-3 py-1.5 rounded-xl border-2 font-bold transition ${
+              className={`text-xs px-3 py-1.5 rounded-xl border-2 font-bold transition whitespace-nowrap flex-shrink-0 ${
                 filterJenis === f.val
-                  ? f.val === 'jasa' ? 'bg-blue-600 text-white border-blue-600' : 'bg-green-600 text-white border-green-600'
+                  ? `${f.aktif} text-white`
                   : 'bg-white text-gray-500 border-gray-100'
               }`}
             >
@@ -160,11 +160,10 @@ export default function PetaPage() {
             </button>
           ))}
 
-          {/* Kembali ke lokasi user */}
           {userPos && (
             <button
               onClick={() => setCenter([...userPos])}
-              className="ml-auto text-xs px-3 py-1.5 rounded-xl border-2 font-bold bg-white text-gray-500 border-gray-100 hover:bg-gray-50 transition"
+              className="ml-auto text-xs px-3 py-1.5 rounded-xl border-2 font-bold bg-white text-gray-500 border-gray-100 hover:bg-gray-50 transition whitespace-nowrap flex-shrink-0"
             >
               📍 Lokasiku
             </button>
@@ -173,20 +172,24 @@ export default function PetaPage() {
       </div>
 
       {/* Legend */}
-      <div className="bg-white border-b px-4 py-2 flex items-center gap-4 z-10">
-        <div className="flex items-center gap-1.5">
+      <div className="bg-white border-b px-4 py-2 flex items-center gap-4 z-10 overflow-x-auto">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <div className="w-3 h-3 rounded-full bg-green-600"></div>
           <span className="text-xs text-gray-500">Toko</span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <div className="w-3 h-3 rounded-full bg-blue-600"></div>
           <span className="text-xs text-gray-500">Jasa</span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+          <span className="text-xs text-gray-500">Preloved</span>
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <div className="w-3 h-3 rounded-full bg-blue-400 ring-2 ring-blue-200"></div>
           <span className="text-xs text-gray-500">Kamu</span>
         </div>
-        <span className="ml-auto text-xs text-gray-400">{tokoFiltered.length} aktif di peta</span>
+        <span className="ml-auto text-xs text-gray-400 flex-shrink-0">{tokoFiltered.length} aktif di peta</span>
       </div>
 
       {loading ? (
@@ -200,7 +203,7 @@ export default function PetaPage() {
         <MapContainer
           center={center}
           zoom={14}
-          style={{ height: 'calc(100vh - 155px)', width: '100%' }}
+          style={{ height: 'calc(100vh - 165px)', width: '100%' }}
           zoomControl={true}
         >
           <SetCenter center={center} />
@@ -209,7 +212,6 @@ export default function PetaPage() {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
-          {/* Marker posisi user */}
           {userPos && (
             <Marker position={userPos} icon={buatUserIcon()}>
               <Popup>
@@ -220,7 +222,6 @@ export default function PetaPage() {
             </Marker>
           )}
 
-          {/* Marker toko/jasa */}
           {tokoFiltered.map(t => (
             <Marker
               key={t.id}
@@ -229,7 +230,6 @@ export default function PetaPage() {
             >
               <Popup minWidth={180}>
                 <div style={{ fontFamily: 'sans-serif' }}>
-                  {/* Header popup */}
                   <div style={{
                     background: getWarnaMarker(t.jenis),
                     margin: '-13px -19px 10px',
@@ -245,18 +245,17 @@ export default function PetaPage() {
                     </div>
                   </div>
 
-                  {/* Body popup */}
                   <div style={{ padding: '0 2px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '6px' }}>
                       <span style={{
-                        background: t.jenis === 'jasa' ? '#dbeafe' : '#dcfce7',
-                        color: t.jenis === 'jasa' ? '#1d4ed8' : '#15803d',
+                        background: t.jenis === 'jasa' ? '#dbeafe' : t.jenis === 'preloved' ? '#fef3c7' : '#dcfce7',
+                        color:      t.jenis === 'jasa' ? '#1d4ed8' : t.jenis === 'preloved' ? '#92400e'  : '#15803d',
                         fontSize: '10px',
                         fontWeight: 'bold',
                         padding: '2px 8px',
                         borderRadius: '99px',
                       }}>
-                        {t.jenis === 'jasa' ? '🛠️ TERSEDIA' : '🟢 BUKA'}
+                        {t.jenis === 'jasa' ? '🛠️ TERSEDIA' : t.jenis === 'preloved' ? '♻️ PRELOVED' : '🟢 BUKA'}
                       </span>
                     </div>
 
@@ -289,7 +288,7 @@ export default function PetaPage() {
                         <button
                           onClick={() => {
                             const nomor = t.telepon.replace(/^0/, '62')
-                            const pesan = encodeURIComponent(`Halo, saya menemukan ${t.jenis === 'jasa' ? 'jasa' : 'toko'} ${t.nama} di Lokaku!`)
+                            const pesan = encodeURIComponent(`Halo, saya menemukan ${t.jenis === 'jasa' ? 'jasa' : t.jenis === 'preloved' ? 'barang preloved' : 'toko'} ${t.nama} di Lokaku!`)
                             window.open(`https://wa.me/${nomor}?text=${pesan}`, '_blank')
                           }}
                           style={{

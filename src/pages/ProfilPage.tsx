@@ -11,6 +11,7 @@ export default function ProfilPage() {
   const [saving, setSaving] = useState(false)
   const [formPassword, setFormPassword] = useState({ baru: '', konfirmasi: '' })
   const [savingPassword, setSavingPassword] = useState(false)
+  const [isVerifiedWA, setIsVerifiedWA] = useState(false)
   const [form, setForm] = useState({
     username: '',
     nama: '',
@@ -45,6 +46,7 @@ export default function ProfilPage() {
         tanggal_lahir: profileData.tanggal_lahir || '',
         nomor_wa: profileData.nomor_wa || nomorWa,
       })
+      setIsVerifiedWA(profileData.is_verified || false)
     } else {
       setForm(f => ({ ...f, nomor_wa: nomorWa }))
     }
@@ -284,14 +286,28 @@ export default function ProfilPage() {
             />
           </div>
 
-          {/* Nomor WA readonly */}
+          {/* Nomor WA + status verifikasi */}
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">
-              Nomor WhatsApp <span className="text-gray-400 font-normal">(tidak bisa diubah)</span>
+              Nomor WhatsApp
             </label>
-            <div className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm bg-gray-100 text-gray-500">
+            <div className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm bg-gray-100 text-gray-500 mb-2">
               +{form.nomor_wa}
             </div>
+            {isVerifiedWA ? (
+              <div className="flex items-center gap-2 px-1">
+                <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-700 text-xs font-bold px-3 py-1.5 rounded-xl">
+                  ✅ Nomor WA Terverifikasi
+                </span>
+              </div>
+            ) : (
+              <button
+                onClick={() => navigate('/verifikasi-wa')}
+                className="w-full border-2 border-green-200 bg-green-50 text-green-700 text-sm py-2.5 rounded-xl font-semibold hover:bg-green-100 transition flex items-center justify-center gap-2"
+              >
+                📱 Verifikasi Nomor WhatsApp
+              </button>
+            )}
           </div>
 
           <button
@@ -378,7 +394,7 @@ export default function ProfilPage() {
 
       </div>
 
-      {/* Bottom nav */}
+{/* Bottom nav */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex shadow-lg">
         <button onClick={() => navigate('/cari')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
           <span className="text-lg">🔍</span>
@@ -388,16 +404,11 @@ export default function ProfilPage() {
           <span className="text-lg">🗺️</span>
           <span className="text-xs font-medium text-gray-400">Peta</span>
         </button>
-        <button onClick={() => navigate('/dashboard')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
-          <span className="text-lg">🏪</span>
-          <span className="text-xs font-medium text-gray-400">Toko</span>
-        </button>
-        <button onClick={() => navigate('/profil')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
+        <button onClick={() => navigate('/profil')} className="flex-1 py-3 flex flex-col items-center gap-0.5 text-emerald-600">
           <span className="text-lg">👤</span>
-          <span className="text-xs font-bold text-red-600">Profil</span>
+          <span className="text-xs font-medium">Profil</span>
         </button>
       </div>
-
     </div>
-  )
+  );
 }

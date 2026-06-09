@@ -73,27 +73,29 @@ export default function CariTokoPage() {
   }
 
   function getJenisInfo(t: any) {
-    if (t.jenis === 'jasa') return { label: 'Jasa', status: 'TERSEDIA', badgeBg: 'bg-blue-100 text-blue-700', cardBg: 'from-blue-50 to-blue-100', btnBg: 'bg-blue-600 hover:bg-blue-700' }
-    if (t.jenis === 'preloved') return { label: 'Preloved', status: 'DIJUAL', badgeBg: 'bg-purple-100 text-purple-700', cardBg: 'from-purple-50 to-purple-100', btnBg: 'bg-purple-600 hover:bg-purple-600' }
-    return { label: 'Toko', status: 'BUKA', badgeBg: 'bg-gray-100 text-gray-500', cardBg: 'from-green-50 to-green-100', btnBg: 'bg-green-600 hover:bg-green-700' }
+    if (t.jenis === 'jasa') return { label: 'Jasa', status: 'TERSEDIA', badgeBg: 'bg-blue-100 text-blue-700', cardBg: 'from-blue-50 to-blue-100', primaryBtnBg: 'bg-blue-600 hover:bg-blue-700 text-white', secondaryBtnBg: 'bg-orange-500 hover:bg-orange-600 text-white' }
+    if (t.jenis === 'preloved') return { label: 'Preloved', status: 'DIJUAL', badgeBg: 'bg-purple-100 text-purple-700', cardBg: 'from-purple-50 to-purple-100', primaryBtnBg: 'bg-purple-600 hover:bg-purple-700 text-white', secondaryBtnBg: 'bg-orange-500 hover:bg-orange-600 text-white' }
+    return { label: 'Toko', status: 'BUKA', badgeBg: 'bg-green-100 text-green-700', cardBg: 'from-green-50 to-green-100', primaryBtnBg: 'bg-green-600 hover:bg-green-700 text-white', secondaryBtnBg: 'bg-orange-500 hover:bg-orange-600 text-white' }
   }
 
-  function getEmoji(t: any) {
-    if (t.jenis === 'jasa') return '🛠️'
-    if (t.jenis === 'preloved') return '♻️'
+  function getIconKategori(daftarTokoKategori: any[]) {
+    if (jenis !== 'semua') return JENIS_CONFIG[jenis].icon
+    const contohToko = daftarTokoKategori[0]
+    if (contohToko?.jenis === 'jasa') return '🛠️'
+    if (contohToko?.jenis === 'preloved') return '♻️'
     return '🏪'
   }
 
-  function hubungiWhatsapp(telepon: string, nama: string, jenisItem: string) {
-    const nomor = telepon.replace(/^0/, '62')
-    const pesan = encodeURIComponent(
-      jenisItem === 'jasa' ? `Halo, saya menemukan jasa ${nama} di Lokaku. Apakah masih tersedia?` :
-      jenisItem === 'preloved' ? `Halo, saya tertarik dengan ${nama} yang dijual di Lokaku. Apakah masih tersedia?` :
-      `Halo, saya menemukan toko ${nama} di Lokaku. Apakah masih buka?`
-    )
-    window.open(`https://wa.me/${nomor}?text=${pesan}`, '_blank')
+  function kelompokkanBerdasarkanKategori(items: any[]) {
+    return items.reduce((grup, item) => {
+      const kat = item.kategori || 'Lainnya'
+      if (!grup[kat]) grup[kat] = []
+      grup[kat].push(item)
+      return grup
+    }, {} as Record<string, any[]>)
   }
 
+  const filteredGrouped = kelompokkanBerdasarkanKategori(filtered)
   const grupList = jenis === 'jasa' ? KATEGORI_JASA : jenis === 'toko' ? KATEGORI_TOKO : jenis === 'preloved' ? KATEGORI_PRELOVED : [...KATEGORI_TOKO, ...KATEGORI_JASA, ...KATEGORI_PRELOVED]
 
   const counts = {
@@ -104,7 +106,6 @@ export default function CariTokoPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-
       {/* Header */}
       <div className="bg-white px-4 pt-4 pb-3 sticky top-0 z-10 shadow-sm">
         <div className="flex items-center justify-between mb-3">
@@ -132,7 +133,7 @@ export default function CariTokoPage() {
         </div>
 
         {/* Filter Jenis */}
-        <div className="flex gap-1.5 mb-3 overflow-x-auto pb-1">
+        <div className="flex gap-1.5 mb-3 overflow-x-auto pb-1" style={{ display: 'flex', overflowX: 'auto' }}>
           {(Object.entries(JENIS_CONFIG) as [JenisFilter, typeof JENIS_CONFIG.semua][]).map(([j, cfg]) => (
             <button key={j} onClick={() => setJenis(j)}
               className={`flex items-center gap-1 text-xs px-3 py-2 rounded-xl border-2 font-bold transition flex-shrink-0 ${jenis === j ? cfg.activeBg : 'bg-white text-gray-500 border-gray-100'}`}>
@@ -163,78 +164,113 @@ export default function CariTokoPage() {
         )}
       </div>
 
-      <div className="max-w-lg mx-auto px-4 py-4">
-        <p className="text-xs text-gray-400 font-medium mb-4">
+      {/* Konten Utama */}
+      <div className="w-full py-4 overflow-x-hidden">
+        <p className="text-xs text-gray-400 font-medium mb-4 px-4">
           {loading ? 'Memuat...' : jenis === 'semua'
             ? `${counts.toko} toko · ${counts.jasa} jasa · ${counts.preloved} preloved aktif`
             : `${filtered.length} ${JENIS_CONFIG[jenis].label.toLowerCase()} aktif`}
         </p>
 
         {loading ? (
-          <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="bg-white rounded-2xl h-48 animate-pulse" />)}</div>
+          <div className="space-y-6 px-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-1/4 animate-pulse" />
+                <div className="flex gap-4 overflow-x-hidden">
+                  {[1, 2, 3].map(j => <div key={j} className="bg-white rounded-2xl h-56 w-48 flex-shrink-0 animate-pulse" />)}
+                </div>
+              </div>
+            ))}
+          </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16">
+          <div className="text-center py-16 px-4">
             <p className="text-4xl mb-3">{JENIS_CONFIG[jenis].icon}</p>
             <p className="text-gray-600 font-semibold text-sm">Belum ada {JENIS_CONFIG[jenis].label.toLowerCase()} tersedia</p>
             <p className="text-gray-400 text-xs mt-1">Coba kata kunci atau kategori lain</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {filtered.map(t => {
-              const info = getJenisInfo(t)
-              return (
-                <div key={t.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition">
-                  {t.foto_url ? (
-                    <img src={t.foto_url} alt={t.nama} className="w-full h-40 object-cover" />
-                  ) : (
-                    <div className={`w-full h-24 flex items-center justify-center text-3xl bg-gradient-to-br ${info.cardBg}`}>
-                      {getEmoji(t)}
-                    </div>
-                  )}
-                  <div className="p-4">
-                    <div className="flex items-start justify-between mb-1">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <h3 className="font-bold text-gray-900 text-sm truncate">{t.nama}</h3>
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-bold flex-shrink-0 ${info.badgeBg}`}>{info.label}</span>
+          <div className="space-y-6">
+            {Object.entries(filteredGrouped).map(([namaKategori, daftarToko]) => (
+              <div key={namaKategori} className="space-y-2">
+                {/* Judul Kategori */}
+                <h2 className="text-sm font-bold text-gray-800 px-4 flex items-center gap-1.5">
+                  <span>{getIconKategori(daftarToko)}</span> {namaKategori} <span className="text-xs font-normal text-gray-400">({daftarToko.length})</span>
+                </h2>
+
+                {/* CONTAINER UTAMA SCROLL HORIZONTAL */}
+                <div 
+                  className="px-4 pb-2 snap-x snap-mandatory" 
+                  style={{ 
+                    display: 'flex', 
+                    flexDirection: 'row', 
+                    overflowX: 'auto', 
+                    WebkitOverflowScrolling: 'touch',
+                    gap: '12px'
+                  }}
+                >
+                  {daftarToko.map(t => {
+                    const info = getJenisInfo(t)
+                    return (
+                      /* CARD TOKO */
+                      <div 
+                        key={t.id} 
+                        className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm flex flex-col justify-between snap-start"
+                        style={{ width: '180px', flexShrink: 0 }}
+                      >
+                        
+                        {/* Atas: Nama Toko & Status */}
+                        <div className="p-3 pb-2">
+                          <div className="flex items-start justify-between gap-1 mb-1">
+                            <h3 className="font-bold text-gray-900 text-xs truncate flex-1" title={t.nama}>{t.nama}</h3>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black flex-shrink-0 ${info.badgeBg}`}>{info.status}</span>
+                          </div>
+                          
+                          <div className="flex items-center justify-between text-[10px] text-gray-400 font-medium">
+                            <span>{info.label}</span>
+                            {userLat && userLng && t.lat && t.lng && (
+                              <span>📍 {formatJarak(hitungJarak(userLat, userLng, t.lat, t.lng))}</span>
+                            )}
+                          </div>
                         </div>
-                        <span className="text-xs text-gray-400">{t.kategori}</span>
+
+                        {/* Tengah: Foto Toko */}
+                        <div className="px-3">
+                          {t.foto_url ? (
+                            <img src={t.foto_url} alt={t.nama} className="w-full h-24 object-cover rounded-xl" />
+                          ) : (
+                            <div className={`w-full h-24 flex items-center justify-center text-2xl bg-gradient-to-br ${info.cardBg} rounded-xl`}>
+                              {t.jenis === 'jasa' ? '🛠️' : t.jenis === 'preloved' ? '♻️' : '🏪'}
+                            </div>
+                          )}
+                          {t.alamat && <p className="text-[10px] text-gray-400 mt-1.5 truncate">📍 {t.alamat}</p>}
+                        </div>
+
+                        {/* Bawah: Tombol Aksi Kontras */}
+                        <div className="p-3 pt-2 grid grid-cols-4 gap-1.5">
+                          <button onClick={() => navigate(`/toko/${t.id}`)}
+                            className={`col-span-2 text-[11px] py-2 rounded-xl font-bold transition text-center ${info.primaryBtnBg}`}>
+                            {t.jenis === 'preloved' ? 'Barang' : t.jenis === 'jasa' ? 'Detail' : 'Toko'}
+                          </button>
+                          {/* Tombol Chat bersih berukuran proporsional */}
+                          <button onClick={() => navigate(`/chat/${t.id}`)}
+                            className={`col-span-2 text-[11px] py-2 rounded-xl font-bold transition flex items-center justify-center gap-1 ${info.secondaryBtnBg}`}>
+                            Chat 💬
+                          </button>
+                        </div>
+
                       </div>
-                      <div className="flex flex-col items-end gap-1 ml-2">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${info.badgeBg}`}>{info.status}</span>
-                        {userLat && userLng && t.lat && t.lng && (
-                          <span className="text-xs text-gray-400 font-medium">📍 {formatJarak(hitungJarak(userLat, userLng, t.lat, t.lng))}</span>
-                        )}
-                      </div>
-                    </div>
-                    {t.alamat && <p className="text-xs text-gray-400 mt-1">📍 {t.alamat}</p>}
-                    {t.deskripsi && <p className="text-xs text-gray-500 mt-1.5 line-clamp-2">{t.deskripsi}</p>}
-                    <div className="flex gap-2 mt-3">
-                      <button onClick={() => navigate(`/toko/${t.id}`)}
-                        className="flex-1 border-2 border-gray-100 text-gray-600 text-xs py-2 rounded-xl font-semibold hover:bg-gray-50 transition">
-                        {t.jenis === 'preloved' ? 'Lihat Barang' : t.jenis === 'jasa' ? 'Lihat Detail' : 'Lihat Toko'}
-                      </button>
-                      {t.telepon && (
-                        <button onClick={() => hubungiWhatsapp(t.telepon, t.nama, t.jenis)}
-                          className={`flex-1 text-white text-xs py-2 rounded-xl font-semibold transition ${info.btnBg}`}>
-                          💬 WhatsApp
-                        </button>
-                      )}
-                      <button onClick={() => navigate(`/chat/${t.id}`)}
-                        className="w-10 border-2 border-gray-100 text-gray-500 text-xs py-2 rounded-xl font-semibold hover:bg-gray-50 transition flex items-center justify-center">
-                        🗨️
-                      </button>
-                    </div>
-                  </div>
+                    )
+                  })}
                 </div>
-              )
-            })}
+              </div>
+            ))}
           </div>
         )}
       </div>
 
       {/* Bottom nav */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex shadow-lg">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex shadow-lg z-20">
         <button onClick={() => navigate('/cari')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
           <span className="text-lg">🔍</span><span className="text-xs font-bold text-red-600">Cari</span>
         </button>

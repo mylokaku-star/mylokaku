@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 
-type TabAdmin = 'verifikasi' | 'pengguna' | 'toko'
+type TabAdmin = 'verifikasi' | 'verifikasi_wa' | 'pengguna' | 'toko'
 
 export default function AdminPage() {
   const navigate = useNavigate()
@@ -11,6 +11,7 @@ export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [tab, setTab] = useState<TabAdmin>('verifikasi')
   const [verifikasiList, setVerifikasiList] = useState<any[]>([])
+  const [verifikasiWAList, setVerifikasiWAList] = useState<any[]>([])
   const [penggunaList, setPenggunaList] = useState<any[]>([])
   const [tokoList, setTokoList] = useState<any[]>([])
   const [selected, setSelected] = useState<any>(null)
@@ -33,18 +34,27 @@ export default function AdminPage() {
     }
 
     setIsAdmin(true)
-    await loadVerifikasi()
-    await loadPengguna()
-    await loadToko()
+    await Promise.all([loadVerifikasi(), loadVerifikasiWA(), loadPengguna(), loadToko()])
     setLoading(false)
   }
 
+  // ── KYC (centang biru toko) ──
   async function loadVerifikasi() {
     const { data } = await supabase
       .from('verifikasi')
       .select('*, profiles:user_id(nama, nomor_wa, nama_lengkap)')
       .order('created_at', { ascending: false })
     setVerifikasiList(data || [])
+  }
+
+  // ── Verifikasi WA (dari tabel profiles) ──
+  async function loadVerifikasiWA() {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, nama, nama_lengkap, email, nomor_wa, is_verified, verification_requested_at, verified_at')
+      .not('verification_requested_at', 'is', null)
+      .order('verification_requested_at', { ascending: true })
+    setVerifikasiWAList(data || [])
   }
 
   async function loadPengguna() {
@@ -63,27 +73,22 @@ export default function AdminPage() {
     setTokoList(data || [])
   }
 
+  // ── Aksi KYC ──
   async function approveVerifikasi(v: any) {
     setProcessing(true)
-    // Update status verifikasi
     const { error: err1 } = await supabase
       .from('verifikasi')
       .update({ status: 'terverifikasi', catatan_admin: catatan || 'Disetujui', updated_at: new Date().toISOString() })
       .eq('id', v.id)
-
-    // Update is_verified di profiles
     const { error: err2 } = await supabase
       .from('profiles')
       .update({ is_verified: true, verified_at: new Date().toISOString() })
       .eq('id', v.user_id)
-
     setProcessing(false)
     if (err1 || err2) { toast.error('Gagal approve'); return }
     toast.success('✅ Verifikasi disetujui! Centang biru aktif.')
-    setSelected(null)
-    setCatatan('')
-    await loadVerifikasi()
-    await loadPengguna()
+    setSelected(null); setCatatan('')
+    await loadVerifikasi(); await loadPengguna()
   }
 
   async function rejectVerifikasi(v: any) {
@@ -96,8 +101,7 @@ export default function AdminPage() {
     setProcessing(false)
     if (error) { toast.error('Gagal reject'); return }
     toast.success('Verifikasi ditolak.')
-    setSelected(null)
-    setCatatan('')
+    setSelected(null); setCatatan('')
     await loadVerifikasi()
   }
 
@@ -107,8 +111,32 @@ export default function AdminPage() {
     await supabase.from('verifikasi').update({ status: 'ditolak', catatan_admin: 'Verifikasi dicabut oleh admin' }).eq('user_id', userId)
     setProcessing(false)
     toast.success('Verifikasi dicabut')
-    await loadVerifikasi()
-    await loadPengguna()
+    await loadVerifikasi(); await loadPengguna()
+  }
+
+  // ── Aksi Verifikasi WA ──
+  async function approveWA(profil: any) {
+    setProcessing(true)
+    const { error } = await supabase
+      .from('profiles')
+      .update({ is_verified: true, verified_at: new Date().toISOString() })
+      .eq('id', profil.id)
+    setProcessing(false)
+    if (error) { toast.error('Gagal approve WA'); return }
+    toast.success(`✅ WA ${profil.nomor_wa} berhasil diverifikasi!`)
+    await loadVerifikasiWA(); await loadPengguna()
+  }
+
+  async function tolakWA(profil: any) {
+    setProcessing(true)
+    const { error } = await supabase
+      .from('profiles')
+      .update({ verification_requested_at: null })
+      .eq('id', profil.id)
+    setProcessing(false)
+    if (error) { toast.error('Gagal tolak'); return }
+    toast.success('Request verifikasi WA dihapus.')
+    await loadVerifikasiWA()
   }
 
   async function hapusToko(tokoId: string) {
@@ -128,7 +156,12 @@ export default function AdminPage() {
     return map[status] || map.belum
   }
 
-  const pending = verifikasiList.filter(v => v.status === 'proses').length
+  function formatTanggal(iso: string) {
+    return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+  }
+
+  const pendingKYC = verifikasiList.filter(v => v.status === 'proses').length
+  const pendingWA  = verifikasiWAList.filter(p => !p.is_verified).length
 
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -149,37 +182,50 @@ export default function AdminPage() {
           <h1 className="font-extrabold text-white text-base">🛡️ Admin Lokaku</h1>
           <p className="text-xs text-gray-400">Dashboard pengelolaan</p>
         </div>
-        {pending > 0 && (
-          <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full animate-bounce">
-            {pending} pending
-          </span>
-        )}
+        
+        {/* ✅ TOMBOL PANEL CS DI SINI (Disisipkan di sisi kanan header sebelum badge pending) */}
+        <div className="ml-auto flex items-center gap-2">
+          <button 
+            onClick={() => navigate('/admin-cs')}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition shadow-sm flex items-center gap-1"
+          >
+            💬 Panel CS
+          </button>
+          
+          {(pendingKYC + pendingWA) > 0 && (
+            <span className="bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full animate-bounce">
+              {pendingKYC + pendingWA} pending
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 px-4 py-4 max-w-lg mx-auto">
+      <div className="grid grid-cols-4 gap-2 px-4 py-4 max-w-lg mx-auto">
         {[
-          { label: 'Total Pengguna', value: penggunaList.length, icon: '👤', color: 'text-blue-600' },
-          { label: 'Total Toko/Jasa', value: tokoList.length, icon: '🏪', color: 'text-green-600' },
-          { label: 'Antrian KYC', value: pending, icon: '⏳', color: 'text-yellow-600' },
+          { label: 'Pengguna', value: penggunaList.length, icon: '👤', color: 'text-blue-600' },
+          { label: 'Toko/Jasa', value: tokoList.length, icon: '🏪', color: 'text-green-600' },
+          { label: 'KYC Pending', value: pendingKYC, icon: '🔵', color: 'text-yellow-600' },
+          { label: 'WA Pending', value: pendingWA, icon: '📱', color: 'text-orange-500' },
         ].map(s => (
-          <div key={s.label} className="bg-white rounded-2xl p-4 text-center border border-gray-100 shadow-sm">
-            <p className="text-2xl mb-1">{s.icon}</p>
-            <p className={`text-xl font-extrabold ${s.color}`}>{s.value}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{s.label}</p>
+          <div key={s.label} className="bg-white rounded-2xl p-3 text-center border border-gray-100 shadow-sm">
+            <p className="text-xl mb-0.5">{s.icon}</p>
+            <p className={`text-lg font-extrabold ${s.color}`}>{s.value}</p>
+            <p className="text-xs text-gray-400 mt-0.5 leading-tight">{s.label}</p>
           </div>
         ))}
       </div>
 
       {/* Tab */}
-      <div className="flex gap-2 px-4 mb-4 max-w-lg mx-auto">
+      <div className="flex gap-2 px-4 mb-4 max-w-lg mx-auto overflow-x-auto pb-1">
         {([
-          { val: 'verifikasi', label: '🔵 Verifikasi KYC' },
-          { val: 'pengguna', label: '👤 Pengguna' },
-          { val: 'toko', label: '🏪 Toko & Jasa' },
+          { val: 'verifikasi',    label: '🔵 KYC' },
+          { val: 'verifikasi_wa', label: `📱 WA${pendingWA > 0 ? ` (${pendingWA})` : ''}` },
+          { val: 'pengguna',      label: '👤 Pengguna' },
+          { val: 'toko',          label: '🏪 Toko' },
         ] as const).map(t => (
           <button key={t.val} onClick={() => setTab(t.val)}
-            className={`text-xs px-3 py-2 rounded-xl border-2 font-bold transition ${tab === t.val ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-500 border-gray-100'}`}>
+            className={`text-xs px-3 py-2 rounded-xl border-2 font-bold transition whitespace-nowrap ${tab === t.val ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-500 border-gray-100'}`}>
             {t.label}
           </button>
         ))}
@@ -187,7 +233,7 @@ export default function AdminPage() {
 
       <div className="max-w-lg mx-auto px-4 space-y-3">
 
-        {/* Tab Verifikasi KYC */}
+        {/* ── Tab Verifikasi KYC ── */}
         {tab === 'verifikasi' && (
           <>
             {verifikasiList.length === 0 ? (
@@ -204,16 +250,13 @@ export default function AdminPage() {
                         {v.profiles?.nama || v.profiles?.nama_lengkap || 'Pengguna'}
                       </p>
                       <p className="text-xs text-gray-400">📱 +{v.profiles?.nomor_wa}</p>
-                      <p className="text-xs text-gray-400">
-                        {new Date(v.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                      </p>
+                      <p className="text-xs text-gray-400">{formatTanggal(v.created_at)}</p>
                     </div>
                     <span className={`text-xs px-2 py-1 rounded-full font-bold ${getStatusBadge(v.status)}`}>
                       {v.status === 'proses' ? '⏳ Pending' : v.status === 'terverifikasi' ? '✓ Disetujui' : v.status === 'ditolak' ? '✕ Ditolak' : 'Belum'}
                     </span>
                   </div>
 
-                  {/* Data verifikasi */}
                   <div className="bg-gray-50 rounded-xl p-3 space-y-1.5 mb-3">
                     <p className="text-xs text-gray-500">NIK: <span className="font-semibold text-gray-700">{v.nik}</span></p>
                     {v.nomor_kk && <p className="text-xs text-gray-500">KK: <span className="font-semibold text-gray-700">{v.nomor_kk}</span></p>}
@@ -221,7 +264,6 @@ export default function AdminPage() {
                     <p className="text-xs text-gray-500">Nama Rekening: <span className="font-semibold text-gray-700">{v.nama_rekening}</span></p>
                   </div>
 
-                  {/* Foto KTP & Selfie */}
                   {(v.foto_ktp_url || v.foto_selfie_url) && (
                     <div className="flex gap-2 mb-3">
                       {v.foto_ktp_url && (
@@ -243,7 +285,6 @@ export default function AdminPage() {
                     </div>
                   )}
 
-                  {/* Aksi */}
                   {v.status === 'proses' && (
                     <>
                       {selected?.id === v.id ? (
@@ -276,7 +317,6 @@ export default function AdminPage() {
                     </>
                   )}
 
-                  {/* Tombol cabut verifikasi */}
                   {v.status === 'terverifikasi' && (
                     <button onClick={() => revokeVerifikasi(v.user_id)} disabled={processing}
                       className="w-full border-2 border-red-100 text-red-500 text-xs py-2 rounded-xl font-semibold hover:bg-red-50 transition">
@@ -295,7 +335,68 @@ export default function AdminPage() {
           </>
         )}
 
-        {/* Tab Pengguna */}
+        {/* ── Tab Verifikasi WA ── */}
+        {tab === 'verifikasi_wa' && (
+          <>
+            <p className="text-xs text-gray-400 font-medium">
+              {verifikasiWAList.length} request · {pendingWA} belum diverifikasi
+            </p>
+
+            {verifikasiWAList.length === 0 ? (
+              <div className="bg-white rounded-3xl p-8 text-center border border-gray-100">
+                <p className="text-3xl mb-2">📱</p>
+                <p className="text-gray-400 text-sm">Belum ada request verifikasi WA</p>
+              </div>
+            ) : verifikasiWAList.map(p => (
+              <div key={p.id} className={`bg-white rounded-2xl border shadow-sm p-4 ${!p.is_verified ? 'border-amber-200' : 'border-gray-100'}`}>
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <p className="font-bold text-gray-900 text-sm">
+                      {p.nama || p.nama_lengkap || 'Pengguna'}
+                    </p>
+                    {p.email && <p className="text-xs text-gray-400">✉️ {p.email}</p>}
+                    <p className="text-xs text-gray-500 font-semibold mt-0.5">
+                      📱 +{p.nomor_wa}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Request: {formatTanggal(p.verification_requested_at)}
+                    </p>
+                  </div>
+                  <span className={`text-xs px-2 py-1 rounded-full font-bold flex-shrink-0 ${p.is_verified ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {p.is_verified ? '✅ Terverifikasi' : '⏳ Pending'}
+                  </span>
+                </div>
+
+                {!p.is_verified && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => tolakWA(p)}
+                      disabled={processing}
+                      className="flex-1 border-2 border-red-100 text-red-500 text-xs py-2.5 rounded-xl font-bold hover:bg-red-50 transition disabled:opacity-50"
+                    >
+                      ✕ Tolak
+                    </button>
+                    <button
+                      onClick={() => approveWA(p)}
+                      disabled={processing}
+                      className="flex-1 bg-green-600 text-white text-xs py-2.5 rounded-xl font-bold hover:bg-green-700 transition disabled:opacity-50"
+                    >
+                      ✓ Verifikasi
+                    </button>
+                  </div>
+                )}
+
+                {p.is_verified && p.verified_at && (
+                  <p className="text-xs text-green-600 bg-green-50 rounded-xl px-3 py-2">
+                    ✅ Diverifikasi pada {formatTanggal(p.verified_at)}
+                  </p>
+                )}
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* ── Tab Pengguna ── */}
         {tab === 'pengguna' && (
           <>
             <p className="text-xs text-gray-400 font-medium">{penggunaList.length} pengguna terdaftar</p>
@@ -330,7 +431,7 @@ export default function AdminPage() {
           </>
         )}
 
-        {/* Tab Toko */}
+        {/* ── Tab Toko ── */}
         {tab === 'toko' && (
           <>
             <p className="text-xs text-gray-400 font-medium">{tokoList.length} toko/jasa/preloved terdaftar</p>

@@ -11,7 +11,8 @@ export default function DashboardPage() {
   const [isBuka, setIsBuka] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [isVerified, setIsVerified] = useState(false)
+  const [isVerified, setIsVerified] = useState(false)       // centang biru toko (KYC)
+  const [isVerifiedWA, setIsVerifiedWA] = useState(false)   // verifikasi nomor WA
   const [namaUser, setNamaUser] = useState('')
 
   useEffect(() => {
@@ -27,9 +28,14 @@ export default function DashboardPage() {
 
   async function loadToko(userId: string) {
     const { data: profileData } = await supabase
-      .from('profiles').select('nama, is_admin, is_verified').eq('id', userId).single()
+      .from('profiles')
+      .select('nama, is_admin, is_verified, nomor_wa, verification_requested_at')
+      .eq('id', userId)
+      .single()
+
     setIsAdmin(profileData?.is_admin || false)
     setIsVerified(profileData?.is_verified || false)
+    setIsVerifiedWA(profileData?.is_verified || false)
     setNamaUser(profileData?.nama || '')
 
     const { data } = await supabase
@@ -135,6 +141,24 @@ export default function DashboardPage() {
 
       <div className="max-w-lg mx-auto px-4 -mt-4 space-y-4">
 
+        {/* Banner verifikasi WA — TERPISAH dari centang biru toko */}
+        {!isVerifiedWA && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+            <div>
+              <p className="text-sm font-bold text-amber-800">📱 Verifikasi Nomor WA</p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                Konfirmasi nomor WhatsApp-mu agar akun lebih aman
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/verifikasi-wa')}
+              className="text-xs bg-amber-500 text-white px-4 py-2 rounded-xl font-bold hover:bg-amber-600 transition flex-shrink-0 ml-3"
+            >
+              Verifikasi →
+            </button>
+          </div>
+        )}
+
         {toko ? (
           <>
             <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100">
@@ -197,7 +221,7 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            {/* Verifikasi akun */}
+            {/* Verifikasi centang biru toko (KYC) — tidak diubah */}
             <div className={`rounded-2xl p-4 border shadow-sm flex items-center justify-between ${isVerified ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-100'}`}>
               <div>
                 <p className="text-sm font-bold text-gray-800">
@@ -221,7 +245,7 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Tombol admin — hanya muncul untuk admin */}
+            {/* Tombol admin */}
             {isAdmin && (
               <button onClick={() => navigate('/admin')}
                 className="w-full bg-gray-900 rounded-2xl p-4 border border-gray-700 shadow-sm text-left hover:bg-gray-800 transition flex items-center gap-3">

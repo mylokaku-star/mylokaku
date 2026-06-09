@@ -153,6 +153,19 @@ export default function LoginPage() {
                   {showPassword ? '🙈' : '👁️'}
                 </button>
               </div>
+
+              {/* 🔑 TOMBOL LUPA KATA SANDI */}
+              {tab === 'masuk' && (
+                <div className="text-right mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/lupa-password')}
+                    className="text-xs font-semibold text-gray-400 hover:text-green-600 transition"
+                  >
+                    Lupa kata sandi?
+                  </button>
+                </div>
+              )}
             </div>
 
             <button
