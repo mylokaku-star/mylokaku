@@ -1,12 +1,74 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 export default function LandingPage() {
   const navigate = useNavigate()
   const [openFaq, setOpenFaq] = useState<number | null>(null)
+  
+  // kembalikan state untuk menyimpan event instalasi PWA
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
+  const [isInstallable, setIsInstallable] = useState(false)
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      // Cegah browser menampilkan info-bar bawaan otomatis
+      e.preventDefault()
+      // Simpan event-nya ke state agar bisa ditempel ke tombol custom kita
+      setDeferredPrompt(e)
+      setIsInstallable(true)
+    }
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+
+    // Deteksi jika aplikasi dibuka dalam mode "standalone" (sudah terinstal)
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstallable(false)
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+    }
+  }, [])
 
   const toggleFaq = (index: number) => {
     setOpenFaq(openFaq === index ? null : index)
+  }
+
+  // Fungsi Fitur Share Aplikasi
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Lokaku - Radar Kebutuhan Sekitarmu',
+          text: 'Temukan UMKM, toko kelontong, penyedia jasa, hingga barang preloved yang aktif secara realtime di sekitarmu!',
+          url: window.location.origin,
+        })
+      } catch (error) {
+        console.log('Batal membagikan:', error)
+      }
+    } else {
+      // Fallback jika browser desktop/tidak mendukung Web Share API
+      navigator.clipboard.writeText(window.location.origin)
+      alert('Link Lokaku berhasil disalin! Silakan bagikan ke tetangga atau teman.')
+    }
+  }
+
+  // Fungsi Fitur Instal Aplikasi (PWA)
+  const handleInstall = async () => {
+    if (!deferredPrompt) return
+    
+    // Munculkan prompt instalasi bawaan browser
+    deferredPrompt.prompt()
+    
+    // Cek respon dari user
+    const { outcome } = await deferredPrompt.userChoice
+    if (outcome === 'accepted') {
+      console.log('User menginstal aplikasi Lokaku')
+    }
+    
+    // Bersihkan prompt karena hanya bisa dipakai satu kali
+    setDeferredPrompt(null)
+    setIsInstallable(false)
   }
 
   const faqs = [
@@ -56,11 +118,31 @@ export default function LandingPage() {
           <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight mb-4">
             Radar Kebutuhan <span className="text-green-600">Sekitarmu</span>
           </h1>
-          <p className="text-gray-500 text-base mb-8 leading-relaxed">
+          <p className="text-gray-500 text-base mb-6 leading-relaxed">
             Temukan UMKM, toko kelontong, penyedia jasa, hingga barang preloved yang benar-benar aktif dan tersedia di sekitarmu saat ini.
           </p>
 
-          <div className="grid grid-cols-3 gap-3 mt-8">
+          {/* Wrapper Tombol Aksi Tambahan */}
+          <div className="flex justify-center gap-3 mb-8">
+            <button
+              onClick={handleShare}
+              className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-bold text-gray-700 shadow-sm transition-all active:scale-95"
+            >
+              🔗 Share Aplikasi
+            </button>
+            
+            {/* Tombol instal hanya muncul jika browser mendeteksi app bisa diinstal & belum terinstal */}
+            {isInstallable && (
+              <button
+                onClick={handleInstall}
+                className="flex items-center gap-2 px-4 py-2.5 bg-green-50 border border-green-200 hover:bg-green-100 rounded-xl text-xs font-bold text-green-700 shadow-sm transition-all active:scale-95 animate-pulse"
+              >
+                📲 Instal Lokaku
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 mt-4">
             <button
               onClick={() => navigate('/cari')}
               className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-green-50 border border-gray-100 hover:border-green-200 rounded-2xl shadow-sm transition-all group"
