@@ -44,8 +44,7 @@ export default function AdminPage() {
       .from('verifikasi_wa')
       .select('*, profiles:user_id(nama, nomor_wa, nama_lengkap)')
       .order('created_at', { ascending: false })
-    console.log('WA data:', data)
-    console.log('WA error:', error)
+    
     setVerifikasiWAList(data || [])
   }
 
