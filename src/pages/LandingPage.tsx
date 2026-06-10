@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import TombolInstalPWA from '../components/TombolInstalPWA'
 
 export default function LandingPage() {
   const navigate = useNavigate()
@@ -65,7 +64,6 @@ export default function LandingPage() {
           </p>
 
           {/* 🚀 TOMBOL INSTAL PWA & SHARE DI SINI */}
-          <TombolInstalPWA />
 
           {/* Main Action Buttons (3 Kolom) */}
           <div className="grid grid-cols-3 gap-3 mt-8">

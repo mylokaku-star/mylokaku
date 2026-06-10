@@ -95,7 +95,7 @@ export default function CariTokoPage() {
     }, {} as Record<string, any[]>)
   }
 
-  const filteredGrouped = kelompokkanBerdasarkanKategori(filtered)
+  const filteredGrouped: Record<string, any[]> = kelompokkanBerdasarkanKategori(filtered)
   const grupList = jenis === 'jasa' ? KATEGORI_JASA : jenis === 'toko' ? KATEGORI_TOKO : jenis === 'preloved' ? KATEGORI_PRELOVED : [...KATEGORI_TOKO, ...KATEGORI_JASA, ...KATEGORI_PRELOVED]
 
   const counts = {
