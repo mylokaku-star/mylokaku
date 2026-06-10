@@ -40,10 +40,12 @@ export default function AdminPage() {
   }
 
   async function loadVerifikasiWA() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('verifikasi_wa')
       .select('*, profiles:user_id(nama, nomor_wa, nama_lengkap)')
       .order('created_at', { ascending: false })
+    console.log('WA data:', data)
+    console.log('WA error:', error)
     setVerifikasiWAList(data || [])
   }
 
