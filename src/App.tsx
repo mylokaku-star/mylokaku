@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
@@ -15,27 +16,43 @@ import VerifikasiPage from './pages/VerifikasiPage'
 import AdminPage from './pages/AdminPage'
 import PusatBantuan from './pages/PusatBantuan'
 
+// Scroll ke atas + paksa remount tiap navigasi
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+  return null
+}
+
 function App() {
+  const location = useLocation()
+
   return (
-    <Routes>
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<Navigate to="/login" replace />} />
-      <Route path="/dashboard" element={<DashboardPage />} />
-      <Route path="/buat-toko" element={<BuatTokoPage />} />
-      <Route path="/cari" element={<CariTokoPage />} />
-      <Route path="/tambah-produk" element={<TambahProdukPage />} />
-      <Route path="/toko/:id" element={<DetailTokoPage />} />
-      <Route path="/peta" element={<PetaPage />} />
-      <Route path="/edit-toko" element={<EditTokoPage />} />
-      <Route path="/produk" element={<ProdukPage />} />
-      <Route path="/profil" element={<ProfilPage />} />
-      <Route path="/chat/:tokoId" element={<ChatPage />} />
-      <Route path="/verifikasi" element={<VerifikasiPage />} />
-      <Route path="/admin" element={<AdminPage />} />
-      <Route path="/preloved" element={<Navigate to="/cari?kategori=preloved" replace />} />
-      <Route path="/pusat-bantuan" element={<PusatBantuan />} />
-    </Routes>
+    <>
+      <ScrollToTop />
+      {/* key={location.key} paksa React remount komponen saat back/forward */}
+      <Routes location={location} key={location.key}>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<Navigate to="/login" replace />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/buat-toko" element={<BuatTokoPage />} />
+        <Route path="/cari" element={<CariTokoPage />} />
+        <Route path="/tambah-produk" element={<TambahProdukPage />} />
+        <Route path="/toko/:id" element={<DetailTokoPage />} />
+        <Route path="/peta" element={<PetaPage />} />
+        <Route path="/edit-toko" element={<EditTokoPage />} />
+        <Route path="/produk" element={<ProdukPage />} />
+        <Route path="/profil" element={<ProfilPage />} />
+        <Route path="/chat/:tokoId" element={<ChatPage />} />
+        <Route path="/verifikasi" element={<VerifikasiPage />} />
+        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/preloved" element={<Navigate to="/cari?kategori=preloved" replace />} />
+        <Route path="/pusat-bantuan" element={<PusatBantuan />} />
+        <Route path="/verifikasi-wa" element={<VerifikasiWA />} />
+      </Routes>
+    </>
   )
 }
 
