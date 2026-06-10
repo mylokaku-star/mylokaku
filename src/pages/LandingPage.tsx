@@ -3,8 +3,6 @@ import { useNavigate } from 'react-router-dom'
 
 export default function LandingPage() {
   const navigate = useNavigate()
-  
-  // State untuk FAQ interaktif
   const [openFaq, setOpenFaq] = useState<number | null>(null)
 
   const toggleFaq = (index: number) => {
@@ -37,16 +35,15 @@ export default function LandingPage() {
             </div>
             <span className="font-bold text-xl tracking-tight text-gray-800">Lokaku</span>
           </div>
-          {/* Tombol Masuk & Daftar */}
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => navigate('/login')} 
+            <button
+              onClick={() => navigate('/login')}
               className="text-sm font-semibold text-gray-600 hover:text-green-600 transition-colors"
             >
               Masuk
             </button>
-            <button 
-              onClick={() => navigate('/register')} 
+            <button
+              onClick={() => navigate('/register')}
               className="text-sm font-semibold text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-lg transition-colors shadow-sm"
             >
               Daftar
@@ -60,12 +57,9 @@ export default function LandingPage() {
             Radar Kebutuhan <span className="text-green-600">Sekitarmu</span>
           </h1>
           <p className="text-gray-500 text-base mb-8 leading-relaxed">
-            Temukan UMKM, toko kelontong, penyedia jasa, hingga barang preloved yang benar-benar aktif and tersedia di sekitarmu saat ini.
+            Temukan UMKM, toko kelontong, penyedia jasa, hingga barang preloved yang benar-benar aktif dan tersedia di sekitarmu saat ini.
           </p>
 
-          {/* 🚀 TOMBOL INSTAL PWA & SHARE DI SINI */}
-
-          {/* Main Action Buttons (3 Kolom) */}
           <div className="grid grid-cols-3 gap-3 mt-8">
             <button
               onClick={() => navigate('/cari')}
@@ -93,7 +87,7 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Info Section / Keunggulan */}
+        {/* Info Section */}
         <div className="bg-gray-50 px-6 py-10 border-t border-b border-gray-100">
           <div className="max-w-md mx-auto space-y-6">
             <div className="flex gap-4 items-start">
@@ -115,36 +109,46 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* FAQ Section */}
-        <div className="px-6 py-10 border-b border-gray-100">
+        {/* FAQ + Pusat Bantuan */}
+        <div className="px-6 pt-6 pb-6 border-b border-gray-100">
           <div className="max-w-md mx-auto">
-            <h2 className="text-xl font-bold text-gray-900 text-center mb-6">Pertanyaan Umum (FAQ)</h2>
-            <div className="space-y-3">
+            <h2 className="text-sm font-bold text-gray-700 mb-2">Pertanyaan Umum (FAQ)</h2>
+            <div className="space-y-1.5">
               {faqs.map((faq, index) => (
-                <div key={index} className="border border-gray-100 rounded-xl overflow-hidden">
+                <div key={index} className="border border-gray-100 rounded-lg overflow-hidden">
                   <button
                     onClick={() => toggleFaq(index)}
-                    className="w-full text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 font-semibold text-sm text-gray-800 flex justify-between items-center transition-colors"
+                    className="w-full text-left px-3 py-2.5 bg-gray-50 hover:bg-gray-100 font-semibold text-xs text-gray-800 flex justify-between items-center transition-colors gap-2"
                   >
                     <span>{faq.q}</span>
-                    <span className="text-gray-400">{openFaq === index ? '▲' : '▼'}</span>
+                    <span className="text-gray-400 flex-shrink-0">{openFaq === index ? '▲' : '▼'}</span>
                   </button>
                   {openFaq === index && (
-                    <div className="px-4 py-3 bg-white text-xs text-gray-500 leading-relaxed border-t border-gray-50">
+                    <div className="px-3 py-2 bg-white text-xs text-gray-500 leading-relaxed border-t border-gray-100">
                       {faq.a}
                     </div>
                   )}
                 </div>
               ))}
             </div>
+
+            {/* Pusat Bantuan menempel di bawah FAQ */}
+            <div className="mt-3 flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-3 py-2.5">
+              <span className="text-xs text-gray-500">🔍 Punya pertanyaan lain?</span>
+              <button
+                onClick={() => navigate('/pusat-bantuan')}
+                className="text-xs font-bold text-green-600 hover:text-green-700 underline flex-shrink-0"
+              >
+                Pusat Bantuan →
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Footer & Hubungkan Mitra + CS/Sosmed */}
+      {/* Footer */}
       <div className="bg-gray-50 border-t border-gray-100 mt-auto">
         <div className="p-6 text-center max-w-md mx-auto w-full space-y-6">
-          {/* Section Ajak Mitra */}
           <div>
             <p className="text-xs text-gray-400 mb-2">Punya usaha dagang, layanan jasa, atau barang bekas layak pakai?</p>
             <button
@@ -157,36 +161,37 @@ export default function LandingPage() {
 
           <hr className="border-gray-200" />
 
-          {/* Section CS & Sosial Media */}
           <div className="flex flex-col items-center gap-4">
-            
             <div className="w-full px-4 py-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-left shadow-sm">
               <p className="text-xs text-amber-800 leading-relaxed">
-                <strong className="text-amber-900 font-bold block mb-1 text-center">💡 Imbauan Keamanan Bertransaksi:</strong> 
+                <strong className="text-amber-900 font-bold block mb-1 text-center">💡 Imbauan Keamanan Bertransaksi:</strong>
                 Lokaku adalah platform untuk menemukan kebutuhan di sekitar Anda. Kami mengimbau penjual dan pembeli untuk selalu berhati-hati saat bertransaksi. Periksa kembali detail produk/jasa dan <span className="font-bold text-amber-950 underline">hindari pembayaran di awal sebelum kesepakatan benar-benar pasti.</span>
               </p>
             </div>
 
-            {/* ✅ SEKARANG SUDAH DIARAHKAN KE /chat-cs (Chat Internal) */}
-            <button
-              onClick={() => navigate('/chat-cs')}
-              className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2.5 rounded-full transition-colors shadow-sm"
-            >
-              💬 Hubungi Customer Service
-            </button>
-            
-            <div className="flex items-center gap-4 text-xs font-medium text-gray-500 flex-wrap justify-center">
-              <a href="https://instagram.com/lokaku" target="_blank" rel="noreferrer" className="hover:text-pink-600 transition-colors">Instagram</a>
-              <span className="text-gray-300">•</span>
-              <a href="https://tiktok.com/@lokaku" target="_blank" rel="noreferrer" className="hover:text-black transition-colors">TikTok</a>
-              <span className="text-gray-300">•</span>
-              <a href="https://youtube.com/@lokaku" target="_blank" rel="noreferrer" className="hover:text-red-600 transition-colors">YouTube</a>
-              <span className="text-gray-300">•</span>
-              <a href="https://facebook.com/lokaku" target="_blank" rel="noreferrer" className="hover:text-blue-600 transition-colors">Facebook</a>
-              <span className="text-gray-300">•</span>
-              <a href="https://twitter.com/lokaku" target="_blank" rel="noreferrer" className="hover:text-black transition-colors">X / Twitter</a>
+            <div className="grid grid-cols-5 gap-1.5 w-full">
+              <a href="https://www.instagram.com/mylokaku/" target="_blank" rel="noreferrer"
+                className="text-[10px] font-semibold text-pink-600 border border-pink-200 bg-pink-50 hover:bg-pink-100 py-1.5 rounded-full transition-colors text-center">
+                Instagram
+              </a>
+              <a href="https://www.tiktok.com/@mylokaku" target="_blank" rel="noreferrer"
+                className="text-[10px] font-semibold text-gray-700 border border-gray-200 bg-gray-50 hover:bg-gray-100 py-1.5 rounded-full transition-colors text-center">
+                TikTok
+              </a>
+              <a href="https://www.youtube.com/@Mylokaku" target="_blank" rel="noreferrer"
+                className="text-[10px] font-semibold text-red-600 border border-red-200 bg-red-50 hover:bg-red-100 py-1.5 rounded-full transition-colors text-center">
+                YouTube
+              </a>
+              <a href="https://www.facebook.com/profile.php?id=61590479860836" target="_blank" rel="noreferrer"
+                className="text-[10px] font-semibold text-blue-600 border border-blue-200 bg-blue-50 hover:bg-blue-100 py-1.5 rounded-full transition-colors text-center">
+                Facebook
+              </a>
+              <a href="https://x.com/mylokaku" target="_blank" rel="noreferrer"
+                className="text-[10px] font-semibold text-gray-700 border border-gray-200 bg-gray-50 hover:bg-gray-100 py-1.5 rounded-full transition-colors text-center">
+                Twitter
+              </a>
             </div>
-            
+
             <p className="text-[10px] text-gray-400">&copy; {new Date().getFullYear()} Lokaku. Hak Cipta Dilindungi.</p>
           </div>
         </div>

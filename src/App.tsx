@@ -13,6 +13,7 @@ import ProfilPage from './pages/ProfilPage'
 import ChatPage from './pages/ChatPage'
 import VerifikasiPage from './pages/VerifikasiPage'
 import AdminPage from './pages/AdminPage'
+import PusatBantuan from './pages/PusatBantuan'
 
 function App() {
   return (
@@ -32,6 +33,8 @@ function App() {
       <Route path="/chat/:tokoId" element={<ChatPage />} />
       <Route path="/verifikasi" element={<VerifikasiPage />} />
       <Route path="/admin" element={<AdminPage />} />
+      <Route path="/preloved" element={<Navigate to="/cari?kategori=preloved" replace />} />
+      <Route path="/pusat-bantuan" element={<PusatBantuan />} />
     </Routes>
   )
 }

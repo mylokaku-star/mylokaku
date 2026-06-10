@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { KATEGORI_TOKO, KATEGORI_JASA, KATEGORI_PRELOVED } from '../lib/kategori'
 
@@ -26,11 +26,17 @@ const JENIS_CONFIG = {
 
 export default function CariTokoPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [toko, setToko] = useState<any[]>([])
   const [filtered, setFiltered] = useState<any[]>([])
   const [search, setSearch] = useState('')
   const [kategori, setKategori] = useState('')
-  const [jenis, setJenis] = useState<JenisFilter>('semua')
+  // ✅ Baca ?kategori=preloved dari URL, default ke 'semua'
+  const [jenis, setJenis] = useState<JenisFilter>(() => {
+    const param = searchParams.get('kategori')
+    if (param === 'preloved' || param === 'toko' || param === 'jasa') return param
+    return 'semua'
+  })
   const [loading, setLoading] = useState(true)
   const [userLat, setUserLat] = useState<number | null>(null)
   const [userLng, setUserLng] = useState<number | null>(null)
@@ -193,39 +199,26 @@ export default function CariTokoPage() {
           <div className="space-y-6">
             {Object.entries(filteredGrouped).map(([namaKategori, daftarToko]) => (
               <div key={namaKategori} className="space-y-2">
-                {/* Judul Kategori */}
                 <h2 className="text-sm font-bold text-gray-800 px-4 flex items-center gap-1.5">
                   <span>{getIconKategori(daftarToko)}</span> {namaKategori} <span className="text-xs font-normal text-gray-400">({daftarToko.length})</span>
                 </h2>
-
-                {/* CONTAINER UTAMA SCROLL HORIZONTAL */}
-                <div 
-                  className="px-4 pb-2 snap-x snap-mandatory" 
-                  style={{ 
-                    display: 'flex', 
-                    flexDirection: 'row', 
-                    overflowX: 'auto', 
-                    WebkitOverflowScrolling: 'touch',
-                    gap: '12px'
-                  }}
+                <div
+                  className="px-4 pb-2 snap-x snap-mandatory"
+                  style={{ display: 'flex', flexDirection: 'row', overflowX: 'auto', WebkitOverflowScrolling: 'touch', gap: '12px' }}
                 >
                   {daftarToko.map(t => {
                     const info = getJenisInfo(t)
                     return (
-                      /* CARD TOKO */
-                      <div 
-                        key={t.id} 
+                      <div
+                        key={t.id}
                         className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm flex flex-col justify-between snap-start"
                         style={{ width: '180px', flexShrink: 0 }}
                       >
-                        
-                        {/* Atas: Nama Toko & Status */}
                         <div className="p-3 pb-2">
                           <div className="flex items-start justify-between gap-1 mb-1">
                             <h3 className="font-bold text-gray-900 text-xs truncate flex-1" title={t.nama}>{t.nama}</h3>
                             <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black flex-shrink-0 ${info.badgeBg}`}>{info.status}</span>
                           </div>
-                          
                           <div className="flex items-center justify-between text-[10px] text-gray-400 font-medium">
                             <span>{info.label}</span>
                             {userLat && userLng && t.lat && t.lng && (
@@ -233,8 +226,6 @@ export default function CariTokoPage() {
                             )}
                           </div>
                         </div>
-
-                        {/* Tengah: Foto Toko */}
                         <div className="px-3">
                           {t.foto_url ? (
                             <img src={t.foto_url} alt={t.nama} className="w-full h-24 object-cover rounded-xl" />
@@ -245,20 +236,16 @@ export default function CariTokoPage() {
                           )}
                           {t.alamat && <p className="text-[10px] text-gray-400 mt-1.5 truncate">📍 {t.alamat}</p>}
                         </div>
-
-                        {/* Bawah: Tombol Aksi Kontras */}
                         <div className="p-3 pt-2 grid grid-cols-4 gap-1.5">
                           <button onClick={() => navigate(`/toko/${t.id}`)}
                             className={`col-span-2 text-[11px] py-2 rounded-xl font-bold transition text-center ${info.primaryBtnBg}`}>
                             {t.jenis === 'preloved' ? 'Barang' : t.jenis === 'jasa' ? 'Detail' : 'Toko'}
                           </button>
-                          {/* Tombol Chat bersih berukuran proporsional */}
                           <button onClick={() => navigate(`/chat/${t.id}`)}
                             className={`col-span-2 text-[11px] py-2 rounded-xl font-bold transition flex items-center justify-center gap-1 ${info.secondaryBtnBg}`}>
                             Chat 💬
                           </button>
                         </div>
-
                       </div>
                     )
                   })}
