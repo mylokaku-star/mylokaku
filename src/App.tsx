@@ -15,6 +15,7 @@ import ChatPage from './pages/ChatPage'
 import VerifikasiPage from './pages/VerifikasiPage'
 import AdminPage from './pages/AdminPage'
 import PusatBantuan from './pages/PusatBantuan'
+import VerifikasiWA from './pages/VerifikasiWA'
 
 // Scroll ke atas + paksa remount tiap navigasi
 function ScrollToTop() {
