@@ -123,10 +123,11 @@ export default function VerifikasiWA() {
     </div>
   )
 
-  if (profile?.is_verified) return (
+  // ✅ Cek is_wa_verified (bukan is_verified yang khusus KYC)
+  if (profile?.is_wa_verified) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center border border-green-100 shadow-sm">
-        <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center text-white text-3xl font-bold mx-auto mb-4">✓</div>
+        <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center text-white text-3xl font-bold mx-auto mb-4">&#10003;</div>
         <h2 className="font-extrabold text-gray-900 text-lg mb-2">Nomor WA Terverifikasi!</h2>
         <p className="text-gray-400 text-sm mb-2">+{profile?.nomor_wa}</p>
         <p className="text-gray-400 text-xs mb-6">Nomor WhatsApp kamu sudah terverifikasi oleh admin Lokaku.</p>
@@ -145,7 +146,7 @@ export default function VerifikasiWA() {
       <div className="bg-white border-b border-gray-100 px-4 py-4 flex items-center gap-3 sticky top-0 z-10 shadow-sm">
         <button onClick={() => navigate('/profil')}
           className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">
-          ←
+          &larr;
         </button>
         <div>
           <h1 className="font-extrabold text-gray-900 text-base">Verifikasi Nomor WA</h1>
@@ -157,7 +158,7 @@ export default function VerifikasiWA() {
 
         {/* Info */}
         <div className="bg-green-50 rounded-2xl p-4 flex gap-3">
-          <span className="text-2xl flex-shrink-0">📱</span>
+          <span className="text-2xl flex-shrink-0">&#128241;</span>
           <div>
             <p className="text-sm font-bold text-green-800 mb-1">Cara Kerja Verifikasi</p>
             <ol className="text-xs text-green-700 space-y-1 leading-relaxed list-decimal list-inside">
@@ -174,7 +175,7 @@ export default function VerifikasiWA() {
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
           <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-3">Nomor yang akan diverifikasi</p>
           <div className="flex items-center gap-3 bg-gray-50 rounded-2xl px-4 py-3">
-            <span className="text-2xl">📱</span>
+            <span className="text-2xl">&#128241;</span>
             <div>
               <p className="font-bold text-gray-900">+{profile?.nomor_wa}</p>
               <p className="text-xs text-gray-400">Nomor yang terdaftar di akun Lokaku</p>
@@ -194,7 +195,7 @@ export default function VerifikasiWA() {
             </div>
 
             <div className="bg-amber-50 rounded-xl p-3 flex gap-2">
-              <span>⏳</span>
+              <span>&#9203;</span>
               <p className="text-xs text-amber-700 leading-relaxed">
                 Menunggu konfirmasi admin Lokaku. Proses verifikasi 1x24 jam hari kerja.
                 Refresh halaman ini untuk cek status terbaru.
@@ -204,7 +205,7 @@ export default function VerifikasiWA() {
             <div className="space-y-2">
               <button onClick={bukaPesanWA}
                 className="w-full bg-green-600 text-white text-sm py-3 rounded-2xl font-bold hover:bg-green-700 transition flex items-center justify-center gap-2">
-                📲 Kirim Ulang ke WhatsApp Admin
+                Kirim Ulang ke WhatsApp Admin
               </button>
               <button onClick={handleBatalkan} disabled={processing}
                 className="w-full border-2 border-red-100 text-red-500 text-sm py-2.5 rounded-2xl font-semibold hover:bg-red-50 transition disabled:opacity-50">
@@ -218,8 +219,8 @@ export default function VerifikasiWA() {
               Dengan memverifikasi nomor WA, kamu membuktikan bahwa nomor <strong>+{profile?.nomor_wa}</strong> benar-benar milikmu.
             </p>
             <button onClick={handleKirimVerifikasi} disabled={processing}
-              className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white text-sm py-4 rounded-2xl font-extrabold transition shadow-lg disabled:opacity-50 flex items-center justify-center gap-2">
-              {processing ? 'Memproses...' : '📲 Kirim Verifikasi ke Admin WA'}
+              className="w-full bg-green-600 hover:bg-green-700 text-white text-sm py-4 rounded-2xl font-extrabold transition shadow-lg disabled:opacity-50 flex items-center justify-center gap-2">
+              {processing ? 'Memproses...' : 'Kirim Verifikasi ke Admin WA'}
             </button>
           </div>
         )}

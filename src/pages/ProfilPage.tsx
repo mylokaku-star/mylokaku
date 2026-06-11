@@ -11,8 +11,8 @@ export default function ProfilPage() {
   const [saving, setSaving] = useState(false)
   const [formPassword, setFormPassword] = useState({ baru: '', konfirmasi: '' })
   const [savingPassword, setSavingPassword] = useState(false)
-  const [isVerified, setIsVerified] = useState(false)
-  const [isVerifiedWA, setIsVerifiedWA] = useState(false)
+  const [isVerified, setIsVerified] = useState(false)       // KYC centang biru
+  const [isVerifiedWA, setIsVerifiedWA] = useState(false)   // Verifikasi nomor WA
   const [form, setForm] = useState({
     username: '',
     nama: '',
@@ -47,16 +47,12 @@ export default function ProfilPage() {
         tanggal_lahir: profileData.tanggal_lahir || '',
         nomor_wa: profileData.nomor_wa || nomorWa,
       })
+
+      // ✅ KYC — dari kolom is_verified
       setIsVerified(profileData.is_verified || false)
 
-      // Cek verifikasi WA dari tabel verifikasi_wa
-      const { data: waData } = await supabase
-        .from('verifikasi_wa')
-        .select('status')
-        .eq('user_id', userData.user.id)
-        .eq('status', 'verified')
-        .single()
-      setIsVerifiedWA(!!waData || profileData.is_verified || false)
+      // ✅ WA — dari kolom is_wa_verified (terpisah dari KYC)
+      setIsVerifiedWA(profileData.is_wa_verified || false)
     } else {
       setForm(f => ({ ...f, nomor_wa: nomorWa }))
     }
@@ -147,13 +143,15 @@ export default function ProfilPage() {
           </div>
           <div className="flex items-center justify-center gap-2">
             <p className="text-white font-bold text-lg">{form.nama || 'Belum ada nama'}</p>
+            {/* Centang biru hanya muncul kalau KYC verified */}
             {isVerified && (
-              <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:18, height:18, background:'#3b82f6', color:'white', borderRadius:'50%', fontSize:11, fontWeight:'bold' }}>✓</span>
+              <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:18, height:18, background:'#3b82f6', color:'white', borderRadius:'50%', fontSize:11, fontWeight:'bold' }}>&#10003;</span>
             )}
           </div>
           {form.username && <p className="text-green-400 text-sm mt-0.5">@{form.username}</p>}
           <div className="flex items-center justify-center gap-2 mt-1">
             <p className="text-gray-400 text-xs">+{form.nomor_wa}</p>
+            {/* Badge WA hanya muncul kalau WA verified */}
             {isVerifiedWA && (
               <span className="text-xs bg-green-700 text-green-200 px-2 py-0.5 rounded-full font-semibold">WA Verified</span>
             )}
@@ -180,7 +178,7 @@ export default function ProfilPage() {
             </p>
           </div>
           {isVerifiedWA ? (
-            <span className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">✓</span>
+            <span className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">&#10003;</span>
           ) : (
             <button onClick={() => navigate('/verifikasi-wa')}
               className="text-xs bg-green-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-green-700 transition flex-shrink-0">
@@ -200,7 +198,7 @@ export default function ProfilPage() {
             </p>
           </div>
           {isVerified ? (
-            <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, background:'#3b82f6', color:'white', borderRadius:'50%', fontSize:16, fontWeight:'bold', flexShrink:0 }}>✓</span>
+            <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, background:'#3b82f6', color:'white', borderRadius:'50%', fontSize:16, fontWeight:'bold', flexShrink:0 }}>&#10003;</span>
           ) : (
             <button onClick={() => navigate('/verifikasi')}
               className="text-xs bg-blue-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-blue-700 transition flex-shrink-0">
@@ -311,7 +309,7 @@ export default function ProfilPage() {
               </div>
               <button onClick={() => navigate('/dashboard')}
                 className="w-full border-2 border-gray-100 text-gray-600 text-sm py-2.5 rounded-xl font-semibold hover:bg-gray-50 transition">
-                Kelola {toko.jenis === 'jasa' ? 'Jasa' : toko.jenis === 'preloved' ? 'Preloved' : 'Toko'} →
+                Kelola {toko.jenis === 'jasa' ? 'Jasa' : toko.jenis === 'preloved' ? 'Preloved' : 'Toko'} &rarr;
               </button>
             </div>
           </div>
@@ -355,19 +353,19 @@ export default function ProfilPage() {
       {/* Bottom nav */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex shadow-lg">
         <button onClick={() => navigate('/cari')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
-          <span className="text-lg">🔍</span>
+          <span className="text-lg">&#128269;</span>
           <span className="text-xs font-medium text-gray-400">Cari</span>
         </button>
         <button onClick={() => navigate('/peta')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
-          <span className="text-lg">🗺️</span>
+          <span className="text-lg">&#128506;</span>
           <span className="text-xs font-medium text-gray-400">Peta</span>
         </button>
         <button onClick={() => navigate('/dashboard')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
-          <span className="text-lg">🏪</span>
+          <span className="text-lg">&#127978;</span>
           <span className="text-xs font-medium text-gray-400">Toko</span>
         </button>
         <button onClick={() => navigate('/profil')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
-          <span className="text-lg">👤</span>
+          <span className="text-lg">&#128100;</span>
           <span className="text-xs font-bold text-red-600">Profil</span>
         </button>
       </div>

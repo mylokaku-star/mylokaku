@@ -40,11 +40,10 @@ export default function AdminPage() {
   }
 
   async function loadVerifikasiWA() {
-    const { data} = await supabase
+    const { data } = await supabase
       .from('verifikasi_wa')
       .select('*, profiles:user_id(nama, nomor_wa, nama_lengkap)')
       .order('created_at', { ascending: false })
-    
     setVerifikasiWAList(data || [])
   }
 
@@ -60,6 +59,7 @@ export default function AdminPage() {
     setTokoList(data || [])
   }
 
+  // ✅ KYC approve — set is_verified = true (centang biru)
   async function approveVerifikasi(v: any) {
     setProcessing(true)
     const { error: err1 } = await supabase.from('verifikasi')
@@ -92,18 +92,17 @@ export default function AdminPage() {
     await supabase.from('profiles').update({ is_verified: false, verified_at: null }).eq('id', userId)
     await supabase.from('verifikasi').update({ status: 'ditolak', catatan_admin: 'Dicabut admin' }).eq('user_id', userId)
     setProcessing(false)
-    toast.success('Verifikasi dicabut')
+    toast.success('Verifikasi KYC dicabut')
     await loadVerifikasi(); await loadPengguna()
   }
 
+  // ✅ WA approve — hanya set is_wa_verified = true, TIDAK menyentuh is_verified (KYC)
   async function approveWA(v: any) {
     setProcessing(true)
-    // Update status di verifikasi_wa
     const { error: err1 } = await supabase.from('verifikasi_wa')
       .update({ status: 'verified' }).eq('id', v.id)
-    // Update is_verified di profiles
     const { error: err2 } = await supabase.from('profiles')
-      .update({ is_verified: true, verified_at: new Date().toISOString() })
+      .update({ is_wa_verified: true })
       .eq('id', v.user_id)
     setProcessing(false)
     if (err1 || err2) { toast.error('Gagal approve WA'); return }
@@ -162,7 +161,9 @@ export default function AdminPage() {
       {/* Header */}
       <div className="bg-gray-900 px-4 py-4 flex items-center gap-3">
         <button onClick={() => navigate('/dashboard')}
-          className="w-8 h-8 bg-gray-700 rounded-xl flex items-center justify-center text-white hover:bg-gray-600 transition">←</button>
+          className="w-8 h-8 bg-gray-700 rounded-xl flex items-center justify-center text-white hover:bg-gray-600 transition">
+          &larr;
+        </button>
         <div className="flex-1">
           <h1 className="font-extrabold text-white text-base">Admin Lokaku</h1>
           <p className="text-xs text-gray-400">Dashboard pengelolaan</p>
@@ -209,7 +210,7 @@ export default function AdminPage() {
         {/* Tab Verifikasi WA */}
         {tab === 'verifikasi_wa' && (
           <>
-            <p className="text-xs text-gray-400 font-medium">{verifikasiWAList.length} request · {pendingWA} pending</p>
+            <p className="text-xs text-gray-400 font-medium">{verifikasiWAList.length} request &middot; {pendingWA} pending</p>
             {verifikasiWAList.length === 0 ? (
               <div className="bg-white rounded-3xl p-8 text-center border border-gray-100">
                 <p className="text-gray-400 text-sm">Belum ada request verifikasi WA</p>
@@ -324,7 +325,7 @@ export default function AdminPage() {
                   {v.status === 'terverifikasi' && (
                     <button onClick={() => revokeVerifikasi(v.user_id)} disabled={processing}
                       className="w-full border-2 border-red-100 text-red-500 text-xs py-2 rounded-xl font-semibold hover:bg-red-50 transition">
-                      Cabut Verifikasi
+                      Cabut Verifikasi KYC
                     </button>
                   )}
                 </div>
@@ -344,19 +345,30 @@ export default function AdminPage() {
                     {(p.nama || '?').charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <p className="font-bold text-gray-900 text-sm truncate">{p.nama || 'Belum isi nama'}</p>
+                      {p.is_wa_verified && (
+                        <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold">WA</span>
+                      )}
                       {p.is_verified && (
-                        <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:14, height:14, background:'#3b82f6', color:'white', borderRadius:'50%', fontSize:9, fontWeight:'bold' }}>✓</span>
+                        <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:14, height:14, background:'#3b82f6', color:'white', borderRadius:'50%', fontSize:9, fontWeight:'bold' }}>&#10003;</span>
                       )}
                       {p.is_admin && <span className="text-xs bg-gray-900 text-white px-1.5 py-0.5 rounded font-bold">ADMIN</span>}
                     </div>
                     <p className="text-xs text-gray-400">+{p.nomor_wa}</p>
                     {p.username && <p className="text-xs text-gray-400">@{p.username}</p>}
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${p.is_verified ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400'}`}>
-                    {p.is_verified ? 'Verified' : 'Belum'}
-                  </span>
+                  <div className="flex flex-col items-end gap-1">
+                    {p.is_verified && (
+                      <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-blue-100 text-blue-700">KYC</span>
+                    )}
+                    {p.is_wa_verified && (
+                      <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-green-100 text-green-700">WA</span>
+                    )}
+                    {!p.is_verified && !p.is_wa_verified && (
+                      <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-gray-100 text-gray-400">Belum</span>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -372,11 +384,11 @@ export default function AdminPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span>{t.jenis === 'jasa' ? '🛠️' : t.jenis === 'preloved' ? '♻️' : '🏪'}</span>
+                      <span>{t.jenis === 'jasa' ? '&#128296;' : t.jenis === 'preloved' ? '&#9851;' : '&#127978;'}</span>
                       <p className="font-bold text-gray-900 text-sm truncate">{t.nama}</p>
                     </div>
                     <p className="text-xs text-gray-400">{t.kategori}</p>
-                    {t.alamat && <p className="text-xs text-gray-400">📍 {t.alamat}</p>}
+                    {t.alamat && <p className="text-xs text-gray-400">&#128205; {t.alamat}</p>}
                     <span className={`text-xs px-2 py-0.5 rounded-full font-bold mt-1 inline-block ${t.is_buka ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
                       {t.is_buka ? 'Buka' : 'Tutup'}
                     </span>
