@@ -7,6 +7,7 @@ export default function ProdukPage() {
   const navigate = useNavigate()
   const [produk, setProduk] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [tokoId, setTokoId] = useState('')
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState({ nama: '', harga: '', deskripsi: '', foto_url: '' })
@@ -16,12 +17,49 @@ export default function ProdukPage() {
   useEffect(() => { loadProduk() }, [])
 
   async function loadProduk() {
-    const { data: userData } = await supabase.auth.getUser()
-    const { data: tokoData } = await supabase.from('toko').select('id').eq('user_id', userData.user?.id).single()
-    if (!tokoData) { setLoading(false); return }
+    setLoading(true)
+    setError(null)
+
+    // 1. Cek sesi user
+    const { data: userData, error: userError } = await supabase.auth.getUser()
+    if (userError || !userData.user) {
+      setError('Sesi tidak ditemukan. Silakan login ulang.')
+      setLoading(false)
+      return
+    }
+
+    // 2. Ambil toko milik user
+    const { data: tokoData, error: tokoError } = await supabase
+      .from('toko')
+      .select('id')
+      .eq('user_id', userData.user.id)
+      .single()
+
+    if (tokoError) {
+      console.error('[ProdukPage] tokoError:', tokoError)
+      setError('Toko tidak ditemukan. Buat toko terlebih dahulu.')
+      setLoading(false)
+      return
+    }
+
     setTokoId(tokoData.id)
-    const { data } = await supabase.from('produk').select('*').eq('toko_id', tokoData.id).order('created_at', { ascending: false })
-    setProduk(data || [])
+
+    // 3. Ambil produk
+    const { data: produkData, error: produkError } = await supabase
+      .from('produk')
+      .select('*')
+      .eq('toko_id', tokoData.id)
+
+    console.log('[ProdukPage] produkData:', produkData)
+    console.log('[ProdukPage] produkError:', produkError)
+
+    if (produkError) {
+      setError('Gagal memuat produk: ' + produkError.message)
+      setLoading(false)
+      return
+    }
+
+    setProduk(produkData || [])
     setLoading(false)
   }
 
@@ -61,14 +99,14 @@ export default function ProdukPage() {
       nama: form.nama, harga: parseInt(form.harga), deskripsi: form.deskripsi, foto_url: form.foto_url,
     }).eq('id', id)
     setSaving(false)
-    if (error) { toast.error('Gagal menyimpan') }
+    if (error) { toast.error('Gagal menyimpan: ' + error.message) }
     else { toast.success('Produk berhasil diupdate!'); setEditId(null); loadProduk() }
   }
 
   async function handleHapus(id: string) {
     if (!confirm('Yakin hapus produk ini?')) return
     const { error } = await supabase.from('produk').delete().eq('id', id)
-    if (error) { toast.error('Gagal hapus produk') }
+    if (error) { toast.error('Gagal hapus produk: ' + error.message) }
     else { toast.success('Produk dihapus!'); loadProduk() }
   }
 
@@ -76,10 +114,36 @@ export default function ProdukPage() {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(harga)
   }
 
+  // --- Loading state ---
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-400 text-sm">Memuat...</p>
+        <p className="text-gray-400 text-sm">Memuat produk...</p>
+      </div>
+    )
+  }
+
+  // --- Error state ---
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white border-b border-gray-100 px-4 py-4 flex items-center gap-3 sticky top-0 z-10 shadow-sm">
+          <button onClick={() => navigate('/dashboard')} className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">
+            &larr;
+          </button>
+          <span className="font-extrabold text-gray-900">Kelola Produk</span>
+        </div>
+        <div className="max-w-lg mx-auto p-4 text-center py-16">
+          <p className="text-4xl mb-4">&#9888;</p>
+          <p className="text-gray-700 font-bold mb-2">Terjadi masalah</p>
+          <p className="text-gray-400 text-sm mb-6">{error}</p>
+          <button
+            onClick={loadProduk}
+            className="bg-red-600 text-white text-sm px-6 py-2.5 rounded-xl font-bold hover:bg-red-700 transition"
+          >
+            Coba Lagi
+          </button>
+        </div>
       </div>
     )
   }
@@ -88,12 +152,14 @@ export default function ProdukPage() {
     <div className="min-h-screen bg-gray-50 pb-8">
       <div className="bg-white border-b border-gray-100 px-4 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/dashboard')} className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">←</button>
+          <button onClick={() => navigate('/dashboard')} className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">
+            &larr;
+          </button>
           <span className="font-extrabold text-gray-900">Kelola Produk</span>
         </div>
         <button
           onClick={() => navigate('/tambah-produk')}
-          className="text-xs bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-2 rounded-xl font-bold shadow-sm hover:from-red-600 hover:to-red-700 transition"
+          className="text-xs bg-red-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-red-700 transition"
         >
           + Tambah
         </button>
@@ -102,12 +168,12 @@ export default function ProdukPage() {
       <div className="max-w-lg mx-auto p-4">
         {produk.length === 0 ? (
           <div className="text-center py-16">
-            <span className="text-5xl mb-4 block">📦</span>
+            <p className="text-5xl mb-4">&#128230;</p>
             <p className="text-gray-600 font-bold mb-2">Belum ada produk</p>
             <p className="text-gray-400 text-sm mb-6">Tambahkan produk pertamamu sekarang!</p>
             <button
               onClick={() => navigate('/tambah-produk')}
-              className="bg-gradient-to-r from-red-500 to-red-600 text-white text-sm px-6 py-3 rounded-2xl font-bold shadow-lg shadow-red-100 hover:from-red-600 hover:to-red-700 transition"
+              className="bg-red-600 text-white text-sm px-6 py-3 rounded-2xl font-bold hover:bg-red-700 transition"
             >
               + Tambah Produk Pertama
             </button>
@@ -126,7 +192,7 @@ export default function ProdukPage() {
                       )}
                       <label className={`w-full flex items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl py-2.5 text-xs cursor-pointer hover:bg-gray-50 transition font-semibold text-gray-500 ${uploadingFoto ? 'opacity-50' : ''}`}>
                         <input type="file" accept="image/*" onChange={handleUploadFoto} disabled={uploadingFoto} className="hidden" />
-                        {uploadingFoto ? '⏳ Mengupload...' : '📷 Ganti Foto'}
+                        {uploadingFoto ? 'Mengupload...' : 'Ganti Foto'}
                       </label>
                     </div>
                     <div>
@@ -146,7 +212,7 @@ export default function ProdukPage() {
                     </div>
                     <div className="flex gap-2">
                       <button onClick={() => handleSave(p.id)} disabled={saving}
-                        className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white text-sm py-2.5 rounded-xl font-bold transition disabled:opacity-50">
+                        className="flex-1 bg-red-600 text-white text-sm py-2.5 rounded-xl font-bold hover:bg-red-700 transition disabled:opacity-50">
                         {saving ? 'Menyimpan...' : 'Simpan'}
                       </button>
                       <button onClick={cancelEdit}
@@ -169,11 +235,11 @@ export default function ProdukPage() {
                       <div className="flex gap-2 mt-3">
                         <button onClick={() => startEdit(p)}
                           className="flex-1 border-2 border-gray-100 text-gray-600 text-xs py-2 rounded-xl font-semibold hover:bg-gray-50 transition">
-                          ✏️ Edit
+                          Edit
                         </button>
                         <button onClick={() => handleHapus(p.id)}
                           className="flex-1 border-2 border-red-100 text-red-500 text-xs py-2 rounded-xl font-semibold hover:bg-red-50 transition">
-                          🗑️ Hapus
+                          Hapus
                         </button>
                       </div>
                     </div>
