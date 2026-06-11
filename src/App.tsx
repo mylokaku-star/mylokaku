@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
+import { Toaster } from 'sonner'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
@@ -31,6 +32,7 @@ function App() {
 
   return (
     <>
+      <Toaster position="top-center" richColors />
       <ScrollToTop />
       {/* key={location.key} paksa React remount komponen saat back/forward */}
       <Routes location={location} key={location.key}>
