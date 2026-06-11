@@ -11,8 +11,8 @@ export default function DashboardPage() {
   const [isBuka, setIsBuka] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [isVerified, setIsVerified] = useState(false)       // centang biru toko (KYC)
-  const [isVerifiedWA, setIsVerifiedWA] = useState(false)   // verifikasi nomor WA
+  const [isVerified, setIsVerified] = useState(false)
+  const [isVerifiedWA, setIsVerifiedWA] = useState(false)
   const [namaUser, setNamaUser] = useState('')
 
   useEffect(() => {
@@ -110,38 +110,55 @@ export default function DashboardPage() {
 
       {/* Header */}
       <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 pt-6 pb-8">
-        <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center text-white font-black text-lg">L</div>
-            <span className="font-extrabold text-white text-lg">Lokaku</span>
-          </div>
-          {isAdmin && (
-            <button onClick={() => navigate('/admin')}
-              className="flex items-center gap-1.5 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-xl font-bold hover:bg-gray-700 transition">
+
+        {/* Baris atas: tombol kembali — kiri, admin — kanan */}
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => navigate('/cari')}
+            className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white text-xs px-3 py-1.5 rounded-xl font-bold transition"
+          >
+            ← Cari Toko
+          </button>
+
+          {isAdmin ? (
+            <button
+              onClick={() => navigate('/admin')}
+              className="flex items-center gap-1.5 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-xl font-bold hover:bg-gray-700 transition"
+            >
               🛡️ Admin
             </button>
+          ) : (
+            /* placeholder agar tombol kembali tetap di kiri */
+            <div className="w-10" />
           )}
         </div>
-        <p className="text-green-100 text-xs mt-2">Selamat datang,</p>
-        <div className="flex items-center gap-2 mt-0.5">
-          <p className="text-white font-bold text-sm">
-            {namaUser || user?.email}
-          </p>
-          {isVerified && (
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: '3px',
-              background: '#3b82f6', color: 'white', borderRadius: '99px',
-              padding: '1px 7px', fontSize: '10px', fontWeight: 'bold',
-            }}>
-              ✓ Terverifikasi
-            </span>
-          )}
+
+        {/* Sapaan — tengah */}
+        <div className="flex flex-col items-center text-center">
+          <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center text-white font-black text-xl mb-2">
+            L
+          </div>
+          <p className="text-green-100 text-xs">Selamat datang,</p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className="text-white font-bold text-sm">
+              {namaUser || user?.email}
+            </p>
+            {isVerified && (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: '3px',
+                background: '#3b82f6', color: 'white', borderRadius: '99px',
+                padding: '1px 7px', fontSize: '10px', fontWeight: 'bold',
+              }}>
+                ✓ Terverifikasi
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
       <div className="max-w-lg mx-auto px-4 -mt-4 space-y-4">
 
-        {/* Banner verifikasi WA — TERPISAH dari centang biru toko */}
+        {/* Banner verifikasi WA */}
         {!isVerifiedWA && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between shadow-sm">
             <div>
@@ -180,8 +197,10 @@ export default function DashboardPage() {
                     {isBuka ? '🟢 BUKA' : '🔴 TUTUP'}
                   </span>
                 </div>
-                <button onClick={toggleStatus}
-                  className={`w-full py-3.5 rounded-2xl text-sm font-extrabold transition shadow-sm ${isBuka ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-100' : 'bg-green-600 hover:bg-green-700 text-white shadow-green-100'}`}>
+                <button
+                  onClick={toggleStatus}
+                  className={`w-full py-3.5 rounded-2xl text-sm font-extrabold transition shadow-sm ${isBuka ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-100' : 'bg-green-600 hover:bg-green-700 text-white shadow-green-100'}`}
+                >
                   {isBuka ? '🔴 Tutup Toko Sekarang' : '🟢 Buka Toko Sekarang'}
                 </button>
               </div>
@@ -221,7 +240,7 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            {/* Verifikasi centang biru toko (KYC) — tidak diubah */}
+            {/* Verifikasi centang biru (KYC) */}
             <div className={`rounded-2xl p-4 border shadow-sm flex items-center justify-between ${isVerified ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-100'}`}>
               <div>
                 <p className="text-sm font-bold text-gray-800">

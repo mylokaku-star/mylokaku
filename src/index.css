@@ -22,3 +22,12 @@ body {
   background: #cbd5e1;
   border-radius: 999px;
 }
+
+/* Sembunyikan scrollbar horizontal pada strip kategori */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
