@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { Toaster } from 'sonner'
+import ProtectedRoute from './components/ProtectedRoute'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
@@ -18,7 +19,6 @@ import AdminPage from './pages/AdminPage'
 import PusatBantuan from './pages/PusatBantuan'
 import VerifikasiWA from './pages/VerifikasiWA'
 
-// Scroll ke atas + paksa remount tiap navigasi
 function ScrollToTop() {
   const { pathname } = useLocation()
   useEffect(() => {
@@ -28,32 +28,32 @@ function ScrollToTop() {
 }
 
 function App() {
-  const location = useLocation()
-
   return (
     <>
       <Toaster position="top-center" richColors />
       <ScrollToTop />
-      {/* key={location.key} paksa React remount komponen saat back/forward */}
-      <Routes location={location} key={location.key}>
+      <Routes>
+        {/* Bebas diakses */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<Navigate to="/login" replace />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/buat-toko" element={<BuatTokoPage />} />
         <Route path="/cari" element={<CariTokoPage />} />
-        <Route path="/tambah-produk" element={<TambahProdukPage />} />
-        <Route path="/toko/:id" element={<DetailTokoPage />} />
         <Route path="/peta" element={<PetaPage />} />
-        <Route path="/edit-toko" element={<EditTokoPage />} />
-        <Route path="/produk" element={<ProdukPage />} />
-        <Route path="/profil" element={<ProfilPage />} />
-        <Route path="/chat/:tokoId" element={<ChatPage />} />
-        <Route path="/verifikasi" element={<VerifikasiPage />} />
-        <Route path="/admin" element={<AdminPage />} />
-        <Route path="/preloved" element={<Navigate to="/cari?kategori=preloved" replace />} />
-        <Route path="/pusat-bantuan" element={<PusatBantuan />} />
+        <Route path="/toko/:id" element={<DetailTokoPage />} />
         <Route path="/verifikasi-wa" element={<VerifikasiWA />} />
+        <Route path="/preloved" element={<Navigate to="/cari?kategori=preloved" replace />} />
+
+        {/* Perlu verifikasi WA */}
+        <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+        <Route path="/buat-toko" element={<ProtectedRoute><BuatTokoPage /></ProtectedRoute>} />
+        <Route path="/tambah-produk" element={<ProtectedRoute><TambahProdukPage /></ProtectedRoute>} />
+        <Route path="/edit-toko" element={<ProtectedRoute><EditTokoPage /></ProtectedRoute>} />
+        <Route path="/produk" element={<ProtectedRoute><ProdukPage /></ProtectedRoute>} />
+        <Route path="/profil" element={<ProtectedRoute><ProfilPage /></ProtectedRoute>} />
+        <Route path="/chat/:tokoId" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+        <Route path="/verifikasi" element={<ProtectedRoute><VerifikasiPage /></ProtectedRoute>} />
+        <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
+        <Route path="/pusat-bantuan" element={<ProtectedRoute><PusatBantuan /></ProtectedRoute>} />
       </Routes>
     </>
   )
