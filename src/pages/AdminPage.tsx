@@ -40,7 +40,7 @@ export default function AdminPage() {
   }
 
   async function loadVerifikasiWA() {
-    const { data, error } = await supabase
+    const { data} = await supabase
       .from('verifikasi_wa')
       .select('*, profiles:user_id(nama, nomor_wa, nama_lengkap)')
       .order('created_at', { ascending: false })

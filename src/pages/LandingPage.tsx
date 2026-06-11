@@ -5,22 +5,18 @@ export default function LandingPage() {
   const navigate = useNavigate()
   const [openFaq, setOpenFaq] = useState<number | null>(null)
   
-  // kembalikan state untuk menyimpan event instalasi PWA
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
   const [isInstallable, setIsInstallable] = useState(false)
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
-      // Cegah browser menampilkan info-bar bawaan otomatis
       e.preventDefault()
-      // Simpan event-nya ke state agar bisa ditempel ke tombol custom kita
       setDeferredPrompt(e)
       setIsInstallable(true)
     }
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
 
-    // Deteksi jika aplikasi dibuka dalam mode "standalone" (sudah terinstal)
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstallable(false)
     }
@@ -34,7 +30,6 @@ export default function LandingPage() {
     setOpenFaq(openFaq === index ? null : index)
   }
 
-  // Fungsi Fitur Share Aplikasi
   const handleShare = async () => {
     if (navigator.share) {
       try {
@@ -47,26 +42,18 @@ export default function LandingPage() {
         console.log('Batal membagikan:', error)
       }
     } else {
-      // Fallback jika browser desktop/tidak mendukung Web Share API
       navigator.clipboard.writeText(window.location.origin)
       alert('Link Lokaku berhasil disalin! Silakan bagikan ke tetangga atau teman.')
     }
   }
 
-  // Fungsi Fitur Instal Aplikasi (PWA)
   const handleInstall = async () => {
     if (!deferredPrompt) return
-    
-    // Munculkan prompt instalasi bawaan browser
     deferredPrompt.prompt()
-    
-    // Cek respon dari user
     const { outcome } = await deferredPrompt.userChoice
     if (outcome === 'accepted') {
       console.log('User menginstal aplikasi Lokaku')
     }
-    
-    // Bersihkan prompt karena hanya bisa dipakai satu kali
     setDeferredPrompt(null)
     setIsInstallable(false)
   }
@@ -122,20 +109,19 @@ export default function LandingPage() {
             Temukan UMKM, toko kelontong, penyedia jasa, hingga barang preloved yang benar-benar aktif dan tersedia di sekitarmu saat ini.
           </p>
 
-          {/* Wrapper Tombol Aksi Tambahan */}
+          {/* Wrapper Tombol Aksi Tambahan (DIPERBAIKI) */}
           <div className="flex justify-center gap-3 mb-8">
             <button
               onClick={handleShare}
-              className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-bold text-gray-700 shadow-sm transition-all active:scale-95"
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border-2 border-gray-300 hover:bg-gray-100 hover:border-gray-400 rounded-xl text-xs font-bold text-gray-800 shadow-sm transition-all active:scale-95"
             >
               🔗 Share Aplikasi
             </button>
             
-            {/* Tombol instal hanya muncul jika browser mendeteksi app bisa diinstal & belum terinstal */}
             {isInstallable && (
               <button
                 onClick={handleInstall}
-                className="flex items-center gap-2 px-4 py-2.5 bg-green-50 border border-green-200 hover:bg-green-100 rounded-xl text-xs font-bold text-green-700 shadow-sm transition-all active:scale-95 animate-pulse"
+                className="flex items-center gap-2 px-5 py-2.5 bg-green-600 border-2 border-green-700 hover:bg-green-700 text-white rounded-xl text-xs font-bold shadow-md transition-all active:scale-95 animate-pulse"
               >
                 📲 Instal Lokaku
               </button>
@@ -214,7 +200,6 @@ export default function LandingPage() {
               ))}
             </div>
 
-            {/* Pusat Bantuan menempel di bawah FAQ */}
             <div className="mt-3 flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-3 py-2.5">
               <span className="text-xs text-gray-500">🔍 Punya pertanyaan lain?</span>
               <button
