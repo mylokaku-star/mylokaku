@@ -1,15 +1,7 @@
-// CariTokoPage.tsx
-// ─── Tambahkan CSS global ini di index.css / global.css ───────────────────────
-// .no-scrollbar::-webkit-scrollbar { display: none; }
-// .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-// ─────────────────────────────────────────────────────────────────────────────
-
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { KATEGORI_TOKO, KATEGORI_JASA, KATEGORI_PRELOVED } from '../lib/kategori'
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function hitungJarak(lat1: number, lng1: number, lat2: number, lng2: number) {
   const R = 6371
@@ -28,8 +20,6 @@ function formatJarak(km: number) {
   return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`
 }
 
-// ─── Types & Config ───────────────────────────────────────────────────────────
-
 type JenisFilter = 'semua' | 'toko' | 'jasa' | 'preloved'
 
 const JENIS_CONFIG = {
@@ -43,25 +33,25 @@ function getJenisInfo(t: any) {
   if (t.jenis === 'jasa')
     return {
       label: 'Jasa', status: 'TERSEDIA',
-      badgeBg: 'bg-blue-100 text-blue-700',
-      cardBg: 'from-blue-50 to-blue-100',
-      primaryBtnBg: 'bg-blue-600 hover:bg-blue-700 text-white',
-      secondaryBtnBg: 'bg-orange-500 hover:bg-orange-600 text-white',
+      badgeStyle: { background: '#dbeafe', color: '#1d4ed8' },
+      cardGradient: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
+      primaryBtnStyle: { background: '#2563eb', color: 'white' },
+      secondaryBtnStyle: { background: '#f97316', color: 'white' },
     }
   if (t.jenis === 'preloved')
     return {
       label: 'Preloved', status: 'DIJUAL',
-      badgeBg: 'bg-purple-100 text-purple-700',
-      cardBg: 'from-purple-50 to-purple-100',
-      primaryBtnBg: 'bg-purple-600 hover:bg-purple-700 text-white',
-      secondaryBtnBg: 'bg-orange-500 hover:bg-orange-600 text-white',
+      badgeStyle: { background: '#f3e8ff', color: '#7e22ce' },
+      cardGradient: 'linear-gradient(135deg, #faf5ff, #f3e8ff)',
+      primaryBtnStyle: { background: '#9333ea', color: 'white' },
+      secondaryBtnStyle: { background: '#f97316', color: 'white' },
     }
   return {
     label: 'Toko', status: 'BUKA',
-    badgeBg: 'bg-green-100 text-green-700',
-    cardBg: 'from-green-50 to-green-100',
-    primaryBtnBg: 'bg-green-600 hover:bg-green-700 text-white',
-    secondaryBtnBg: 'bg-orange-500 hover:bg-orange-600 text-white',
+    badgeStyle: { background: '#dcfce7', color: '#15803d' },
+    cardGradient: 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
+    primaryBtnStyle: { background: '#16a34a', color: 'white' },
+    secondaryBtnStyle: { background: '#f97316', color: 'white' },
   }
 }
 
@@ -71,8 +61,6 @@ function getIconKategori(jenis: JenisFilter, contohToko?: any) {
   if (contohToko?.jenis === 'preloved') return '♻️'
   return '🏪'
 }
-
-// ─── Sub-komponen: Satu Kartu Toko/Jasa/Preloved ─────────────────────────────
 
 interface TokoCardProps {
   t: any
@@ -90,53 +78,83 @@ function TokoCard({ t, userLat, userLng, onDetail, onChat }: TokoCardProps) {
       : null
 
   return (
-    <div
-      // w-52 = 208px — cukup lebar, tapi menyisakan potongan kartu berikutnya
-      className="w-52 flex-shrink-0 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col"
-    >
-      {/* Foto / placeholder */}
+    <div style={{
+      width: '200px',
+      flexShrink: 0,
+      background: 'white',
+      borderRadius: '16px',
+      border: '1px solid #f1f5f9',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
+    }}>
       {t.foto_url ? (
-        <img src={t.foto_url} alt={t.nama} className="w-full h-28 object-cover" />
+        <img src={t.foto_url} alt={t.nama}
+          style={{ width: '100%', height: '112px', objectFit: 'cover', display: 'block' }} />
       ) : (
-        <div
-          className={`w-full h-28 flex items-center justify-center text-3xl bg-gradient-to-br ${info.cardBg}`}
-        >
+        <div style={{
+          width: '100%', height: '112px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '32px', background: info.cardGradient,
+        }}>
           {t.jenis === 'jasa' ? '🛠️' : t.jenis === 'preloved' ? '♻️' : '🏪'}
         </div>
       )}
 
-      {/* Info */}
-      <div className="p-3 flex flex-col gap-1 flex-1">
-        <div className="flex items-start justify-between gap-1">
-          <h3 className="font-bold text-gray-900 text-xs truncate flex-1" title={t.nama}>
+      <div style={{ padding: '10px 10px 6px', flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '4px' }}>
+          <span style={{
+            fontWeight: 700, fontSize: '11px', color: '#111827',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
+          }} title={t.nama}>
             {t.nama}
-          </h3>
-          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black flex-shrink-0 ${info.badgeBg}`}>
+          </span>
+          <span style={{
+            ...info.badgeStyle,
+            fontSize: '9px', padding: '2px 6px', borderRadius: '999px',
+            fontWeight: 800, flexShrink: 0,
+          }}>
             {info.status}
           </span>
         </div>
 
-        <div className="flex items-center justify-between text-[10px] text-gray-400 font-medium">
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#9ca3af', fontWeight: 500 }}>
           <span>{info.label}</span>
           {jarak !== null && <span>📍 {formatJarak(jarak)}</span>}
         </div>
 
         {t.alamat && (
-          <p className="text-[10px] text-gray-400 truncate">📍 {t.alamat}</p>
+          <p style={{
+            fontSize: '10px', color: '#9ca3af',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            📍 {t.alamat}
+          </p>
         )}
       </div>
 
-      {/* Tombol aksi */}
-      <div className="px-3 pb-3 grid grid-cols-2 gap-1.5">
+      <div style={{ padding: '0 10px 10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
         <button
           onClick={() => onDetail(t.id)}
-          className={`text-[11px] py-2 rounded-xl font-bold transition text-center ${info.primaryBtnBg}`}
+          style={{
+            ...info.primaryBtnStyle,
+            fontSize: '11px', padding: '7px 0',
+            borderRadius: '10px', fontWeight: 700,
+            border: 'none', cursor: 'pointer', textAlign: 'center',
+          }}
         >
           {t.jenis === 'preloved' ? 'Barang' : t.jenis === 'jasa' ? 'Detail' : 'Toko'}
         </button>
         <button
           onClick={() => onChat(t.id)}
-          className={`text-[11px] py-2 rounded-xl font-bold transition flex items-center justify-center gap-1 ${info.secondaryBtnBg}`}
+          style={{
+            ...info.secondaryBtnStyle,
+            fontSize: '11px', padding: '7px 0',
+            borderRadius: '10px', fontWeight: 700,
+            border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px',
+          }}
         >
           Chat 💬
         </button>
@@ -144,8 +162,6 @@ function TokoCard({ t, userLat, userLng, onDetail, onChat }: TokoCardProps) {
     </div>
   )
 }
-
-// ─── Sub-komponen: Strip Horizontal Satu Kategori ────────────────────────────
 
 interface KategoriStripProps {
   namaKategori: string
@@ -157,38 +173,37 @@ interface KategoriStripProps {
   onChat: (id: string) => void
 }
 
-function KategoriStrip({
-  namaKategori,
-  daftarToko,
-  jenis,
-  userLat,
-  userLng,
-  onDetail,
-  onChat,
-}: KategoriStripProps) {
+function KategoriStrip({ namaKategori, daftarToko, jenis, userLat, userLng, onDetail, onChat }: KategoriStripProps) {
   const icon = getIconKategori(jenis, daftarToko[0])
 
   return (
-    <section className="space-y-2">
-      {/* Judul kategori */}
-      <div className="px-4 flex items-center justify-between">
-        <h2 className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
+    <section style={{ marginBottom: '8px' }}>
+      <div style={{ padding: '0 16px', marginBottom: '8px' }}>
+        <h2 style={{ fontSize: '13px', fontWeight: 700, color: '#1f2937', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
           <span>{icon}</span>
           {namaKategori}
-          <span className="text-xs font-normal text-gray-400">({daftarToko.length})</span>
+          <span style={{ fontSize: '11px', fontWeight: 400, color: '#9ca3af' }}>({daftarToko.length})</span>
         </h2>
       </div>
 
-      {/*
-        ─ overflow-x-auto  → horizontal scroll
-        ─ no-scrollbar     → sembunyikan scrollbar browser (tambahkan CSS-nya, lihat catatan di atas)
-        ─ flex flex-nowrap → kartu berjejer, tidak wrap ke baris baru
-        ─ pl-4 pr-6        → padding kiri sejajar konten, padding kanan lebih lebar
-                             agar kartu terakhir sedikit terpotong → petunjuk visual "ada lagi"
-      *)
-      */}
-      <div className="overflow-x-auto no-scrollbar">
-        <div className="flex flex-nowrap gap-3 pl-4 pr-6">
+      {/* ── FIX: width 100vw pada outer, minWidth max-content pada inner ── */}
+      <div style={{
+        overflowX: 'auto',
+        overflowY: 'visible',
+        width: '100vw',
+        WebkitOverflowScrolling: 'touch' as any,
+        msOverflowStyle: 'none' as any,
+        scrollbarWidth: 'none' as any,
+      }}>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'row',
+          flexWrap: 'nowrap',
+          gap: '12px',
+          paddingLeft: '16px',
+          paddingRight: '24px',
+          minWidth: 'max-content',
+        }}>
           {daftarToko.map((t) => (
             <TokoCard
               key={t.id}
@@ -205,26 +220,31 @@ function KategoriStrip({
   )
 }
 
-// ─── Komponen Skeleton Loading ────────────────────────────────────────────────
-
 function SkeletonStrip() {
   return (
-    <section className="space-y-2">
-      <div className="px-4">
-        <div className="h-4 bg-gray-200 rounded w-1/4 animate-pulse" />
+    <section style={{ marginBottom: '8px' }}>
+      <div style={{ padding: '0 16px', marginBottom: '8px' }}>
+        <div style={{ height: '14px', background: '#e5e7eb', borderRadius: '6px', width: '30%' }} />
       </div>
-      <div className="overflow-x-auto no-scrollbar">
-        <div className="flex flex-nowrap gap-3 pl-4 pr-6">
+      <div style={{
+        overflowX: 'auto',
+        width: '100vw',
+        msOverflowStyle: 'none' as any,
+        scrollbarWidth: 'none' as any,
+      }}>
+        <div style={{
+          display: 'flex', flexDirection: 'row', flexWrap: 'nowrap',
+          gap: '12px', paddingLeft: '16px', paddingRight: '24px',
+          minWidth: 'max-content',
+        }}>
           {[1, 2, 3].map((i) => (
-            <div key={i} className="w-52 flex-shrink-0 bg-gray-200 rounded-2xl h-56 animate-pulse" />
+            <div key={i} style={{ width: '200px', flexShrink: 0, height: '224px', background: '#e5e7eb', borderRadius: '16px' }} />
           ))}
         </div>
       </div>
     </section>
   )
 }
-
-// ─── Halaman Utama ────────────────────────────────────────────────────────────
 
 export default function CariTokoPage() {
   const navigate = useNavigate()
@@ -246,10 +266,7 @@ export default function CariTokoPage() {
 
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setUserLat(pos.coords.latitude)
-        setUserLng(pos.coords.longitude)
-      },
+      (pos) => { setUserLat(pos.coords.latitude); setUserLng(pos.coords.longitude) },
       () => {}
     )
     loadToko()
@@ -260,10 +277,7 @@ export default function CariTokoPage() {
 
   async function loadToko() {
     const { data } = await supabase
-      .from('toko')
-      .select('*')
-      .eq('is_buka', true)
-      .order('created_at', { ascending: false })
+      .from('toko').select('*').eq('is_buka', true).order('created_at', { ascending: false })
     setToko(data || [])
     setLoading(false)
   }
@@ -273,28 +287,21 @@ export default function CariTokoPage() {
     if (jenis === 'toko') hasil = hasil.filter((t) => !t.jenis || t.jenis === 'toko')
     else if (jenis === 'jasa') hasil = hasil.filter((t) => t.jenis === 'jasa')
     else if (jenis === 'preloved') hasil = hasil.filter((t) => t.jenis === 'preloved')
-
     if (search)
-      hasil = hasil.filter(
-        (t) =>
-          t.nama?.toLowerCase().includes(search.toLowerCase()) ||
-          t.kategori?.toLowerCase().includes(search.toLowerCase()) ||
-          t.deskripsi?.toLowerCase().includes(search.toLowerCase())
+      hasil = hasil.filter((t) =>
+        t.nama?.toLowerCase().includes(search.toLowerCase()) ||
+        t.kategori?.toLowerCase().includes(search.toLowerCase()) ||
+        t.deskripsi?.toLowerCase().includes(search.toLowerCase())
       )
     if (kategori) hasil = hasil.filter((t) => t.kategori === kategori)
-
     if (sortByJarak && userLat && userLng) {
       hasil = hasil
-        .map((t) => ({
-          ...t,
-          jarak: t.lat && t.lng ? hitungJarak(userLat, userLng, t.lat, t.lng) : 9999,
-        }))
+        .map((t) => ({ ...t, jarak: t.lat && t.lng ? hitungJarak(userLat, userLng, t.lat, t.lng) : 9999 }))
         .sort((a, b) => a.jarak - b.jarak)
     }
     setFiltered(hasil)
   }
 
-  // Kelompokkan hasil filter berdasarkan kategori
   const filteredGrouped = filtered.reduce((grup, item) => {
     const kat = item.kategori || 'Lainnya'
     if (!grup[kat]) grup[kat] = []
@@ -302,7 +309,6 @@ export default function CariTokoPage() {
     return grup
   }, {} as Record<string, any[]>)
 
-  // Urutkan kategori sesuai master list agar tampilan konsisten
   const masterKategoriList =
     jenis === 'jasa'     ? KATEGORI_JASA :
     jenis === 'toko'     ? KATEGORI_TOKO :
@@ -310,8 +316,6 @@ export default function CariTokoPage() {
     [...KATEGORI_TOKO, ...KATEGORI_JASA, ...KATEGORI_PRELOVED]
 
   const masterKategoriFlat = masterKategoriList.flatMap((g) => g.items)
-
-  // Kategori yang ada datanya, diurutkan mengikuti master list; sisanya ditaruh di belakang
   const sortedKategoriKeys = [
     ...masterKategoriFlat.filter((k) => filteredGrouped[k]),
     ...Object.keys(filteredGrouped).filter((k) => !masterKategoriFlat.includes(k)),
@@ -332,7 +336,6 @@ export default function CariTokoPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
 
-      {/* ── Header sticky ──────────────────────────────────────────────────── */}
       <div className="bg-white px-4 pt-4 pb-3 sticky top-0 z-10 shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -347,18 +350,13 @@ export default function CariTokoPage() {
           {userLat && (
             <button
               onClick={() => setSortByJarak(!sortByJarak)}
-              className={`text-xs px-3 py-1.5 rounded-xl border-2 font-bold transition ${
-                sortByJarak
-                  ? 'bg-green-600 text-white border-green-600'
-                  : 'bg-white text-gray-500 border-gray-200'
-              }`}
+              className={`text-xs px-3 py-1.5 rounded-xl border-2 font-bold transition ${sortByJarak ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-500 border-gray-200'}`}
             >
               📍 Terdekat
             </button>
           )}
         </div>
 
-        {/* Search */}
         <div className="relative mb-3">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
           <input
@@ -369,32 +367,25 @@ export default function CariTokoPage() {
           />
         </div>
 
-        {/* Filter Jenis */}
-        <div className="flex gap-1.5 mb-3 overflow-x-auto no-scrollbar pb-1">
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', overflowX: 'auto', paddingBottom: '4px', msOverflowStyle: 'none' as any, scrollbarWidth: 'none' as any }}>
           {(Object.entries(JENIS_CONFIG) as [JenisFilter, typeof JENIS_CONFIG.semua][]).map(([j, cfg]) => (
             <button
               key={j}
               onClick={() => setJenis(j)}
-              className={`flex items-center gap-1 text-xs px-3 py-2 rounded-xl border-2 font-bold transition flex-shrink-0 ${
-                jenis === j ? cfg.activeBg : 'bg-white text-gray-500 border-gray-100'
-              }`}
+              className={`flex items-center gap-1 text-xs px-3 py-2 rounded-xl border-2 font-bold transition flex-shrink-0 ${jenis === j ? cfg.activeBg : 'bg-white text-gray-500 border-gray-100'}`}
             >
               {cfg.icon} {cfg.label}
             </button>
           ))}
           <button
             onClick={() => setShowKategori(!showKategori)}
-            className={`ml-auto flex items-center gap-1 text-xs px-3 py-2 rounded-xl border-2 font-bold transition flex-shrink-0 ${
-              kategori
-                ? 'bg-red-600 text-white border-red-600'
-                : 'bg-white text-gray-500 border-gray-100'
-            }`}
+            className={`flex items-center gap-1 text-xs px-3 py-2 rounded-xl border-2 font-bold transition flex-shrink-0 ${kategori ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-500 border-gray-100'}`}
+            style={{ marginLeft: 'auto' }}
           >
             {kategori ? '✕ Reset' : '☰ Kategori'}
           </button>
         </div>
 
-        {/* Dropdown kategori */}
         {showKategori && (
           <select
             value={kategori}
@@ -419,7 +410,6 @@ export default function CariTokoPage() {
         )}
       </div>
 
-      {/* ── Konten Utama — scroll vertikal ─────────────────────────────────── */}
       <div className="py-4 space-y-6">
         <p className="text-xs text-gray-400 font-medium px-4">
           {loading
@@ -430,14 +420,12 @@ export default function CariTokoPage() {
         </p>
 
         {loading ? (
-          /* Skeleton */
           <>
             <SkeletonStrip />
             <SkeletonStrip />
             <SkeletonStrip />
           </>
         ) : filtered.length === 0 ? (
-          /* Empty state */
           <div className="text-center py-16 px-4">
             <p className="text-4xl mb-3">{JENIS_CONFIG[jenis].icon}</p>
             <p className="text-gray-600 font-semibold text-sm">
@@ -446,7 +434,6 @@ export default function CariTokoPage() {
             <p className="text-gray-400 text-xs mt-1">Coba kata kunci atau kategori lain</p>
           </div>
         ) : (
-          /* ── Satu <KategoriStrip> per kategori, scroll vertikal antar strip ── */
           sortedKategoriKeys.map((namaKategori) => (
             <KategoriStrip
               key={namaKategori}
@@ -462,7 +449,6 @@ export default function CariTokoPage() {
         )}
       </div>
 
-      {/* ── Bottom Nav ─────────────────────────────────────────────────────── */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex shadow-lg z-20">
         <button onClick={() => navigate('/cari')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
           <span className="text-lg">🔍</span>
