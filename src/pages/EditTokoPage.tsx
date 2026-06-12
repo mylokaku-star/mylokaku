@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { KATEGORI_TOKO, KATEGORI_JASA, KATEGORI_PRELOVED } from '../lib/kategori'
+import { kompresGambar, validasiGambar, formatUkuran } from '../lib/imageHelper'
 
 type JenisDaftar = 'toko' | 'jasa' | 'preloved'
 
@@ -18,6 +19,7 @@ export default function EditTokoPage() {
   const [saving, setSaving] = useState(false)
   const [loadingLokasi, setLoadingLokasi] = useState(false)
   const [uploadingFoto, setUploadingFoto] = useState(false)
+  const [infoFoto, setInfoFoto] = useState<string>('')
   const [tokoId, setTokoId] = useState('')
   const [jenis, setJenis] = useState<JenisDaftar>('toko')
   const [form, setForm] = useState({
@@ -62,17 +64,41 @@ export default function EditTokoPage() {
   async function handleUploadFoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 2 * 1024 * 1024) { toast.error('Ukuran foto maksimal 2MB'); return }
+
+    // Validasi
+    const errorMsg = validasiGambar(file, 10)
+    if (errorMsg) { toast.error(errorMsg); return }
     if (!tokoId) { toast.error('Toko belum dimuat'); return }
+
     setUploadingFoto(true)
-    const ext = file.name.split('.').pop()
-    const fileName = `${tokoId}-${Date.now()}.${ext}`
-    const { error: uploadError } = await supabase.storage.from('toko-foto').upload(fileName, file, { upsert: true })
-    if (uploadError) { toast.error('Gagal upload foto'); setUploadingFoto(false); return }
-    const { data: urlData } = supabase.storage.from('toko-foto').getPublicUrl(fileName)
-    setForm(f => ({ ...f, foto_url: urlData.publicUrl }))
-    setUploadingFoto(false)
-    toast.success('Foto berhasil diupload!')
+    setInfoFoto('')
+
+    try {
+      // Kompresi sebelum upload
+      const fileKompres = await kompresGambar(file, {
+        maxWidth: 800,
+        maxHeight: 800,
+        kualitas: 0.75,
+        maxSizeKB: 500,
+      })
+
+      setInfoFoto(`${formatUkuran(file.size)} → ${formatUkuran(fileKompres.size)}`)
+
+      const ext = 'jpg'
+      const fileName = `${tokoId}-${Date.now()}.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from('toko-foto').upload(fileName, fileKompres, { upsert: true })
+
+      if (uploadError) { toast.error('Gagal upload foto'); return }
+
+      const { data: urlData } = supabase.storage.from('toko-foto').getPublicUrl(fileName)
+      setForm(f => ({ ...f, foto_url: urlData.publicUrl }))
+      toast.success('Foto berhasil diupload!')
+    } catch (err) {
+      toast.error('Gagal memproses foto')
+    } finally {
+      setUploadingFoto(false)
+    }
   }
 
   function ambilLokasi() {
@@ -116,7 +142,6 @@ export default function EditTokoPage() {
 
   const cfg = JENIS_CONFIG[jenis]
   const grupList = jenis === 'toko' ? KATEGORI_TOKO : jenis === 'jasa' ? KATEGORI_JASA : KATEGORI_PRELOVED
-
   const labelNama = jenis === 'toko' ? 'Nama Toko' : jenis === 'jasa' ? 'Nama / Brand Jasa' : 'Nama / Judul Barang'
   const labelAlamat = jenis === 'toko' ? 'Alamat Toko' : jenis === 'jasa' ? 'Area Layanan' : 'Lokasi Penjual'
   const labelDeskripsi = jenis === 'toko' ? 'Deskripsi Toko' : jenis === 'jasa' ? 'Deskripsi Jasa' : 'Deskripsi Barang (kondisi, harga, dll)'
@@ -129,9 +154,7 @@ export default function EditTokoPage() {
       <div className="bg-white border-b border-gray-100 px-4 py-4 flex items-center gap-3 sticky top-0 z-10 shadow-sm">
         <button onClick={() => navigate('/dashboard')} className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">←</button>
         <div>
-          <h1 className="font-extrabold text-gray-900 text-base">
-            Edit {cfg.icon} {cfg.label}
-          </h1>
+          <h1 className="font-extrabold text-gray-900 text-base">Edit {cfg.icon} {cfg.label}</h1>
           <p className="text-xs text-gray-400">Update info {cfg.label.toLowerCase()} kamu</p>
         </div>
       </div>
@@ -147,15 +170,19 @@ export default function EditTokoPage() {
               {cfg.icon}
             </div>
           )}
-          <div className="p-4">
+          <div className="p-4 space-y-2">
             <label className={`w-full flex items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl py-3 text-sm cursor-pointer hover:bg-gray-50 transition font-semibold text-gray-500 ${uploadingFoto ? 'opacity-50' : ''}`}>
               <input type="file" accept="image/*" onChange={handleUploadFoto} disabled={uploadingFoto} className="hidden" />
-              {uploadingFoto ? '⏳ Mengupload...' : '📷 Ganti Foto (maks 2MB)'}
+              {uploadingFoto ? '⏳ Mengkompresi & upload...' : '📷 Ganti Foto (otomatis dikompresi)'}
             </label>
+            {infoFoto && (
+              <p className="text-xs text-green-600 font-semibold text-center">✅ Ukuran: {infoFoto}</p>
+            )}
+            <p className="text-xs text-gray-400 text-center">Foto akan dikompresi otomatis sebelum upload</p>
           </div>
         </div>
 
-        {/* Pilih Jenis — 3 tombol */}
+        {/* Pilih Jenis */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
           <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-3">Jenis</p>
           <div className="grid grid-cols-3 gap-2">
@@ -170,9 +197,7 @@ export default function EditTokoPage() {
 
         {/* Form Info */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-4">
-          <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">
-            Info {cfg.label}
-          </p>
+          <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Info {cfg.label}</p>
 
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">{labelNama} *</label>
