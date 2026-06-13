@@ -4,6 +4,7 @@ import { Toaster } from 'sonner'
 import ProtectedRoute from './components/ProtectedRoute'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
+import LupaPasswordPage from './pages/LupaPasswordPage'
 import DashboardPage from './pages/DashboardPage'
 import BuatTokoPage from './pages/BuatTokoPage'
 import CariTokoPage from './pages/CariTokoPage'
@@ -36,6 +37,7 @@ function App() {
         {/* Bebas diakses */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/lupa-password" element={<LupaPasswordPage />} />
         <Route path="/register" element={<Navigate to="/login" replace />} />
         <Route path="/cari" element={<CariTokoPage />} />
         <Route path="/peta" element={<PetaPage />} />
