@@ -61,12 +61,32 @@ export default function AdminPage() {
     setTokoList(data || [])
   }
 
+  // ── PROMO: join manual karena RLS foreign key join tidak support cross-user ──
   async function loadPromo() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('promos')
-      .select('*, toko:toko_id(nama, alamat), profiles:user_id(nama, nomor_wa)')
+      .select('*')
       .order('created_at', { ascending: false })
-    setPromoList(data || [])
+
+    if (error) { console.error('loadPromo error:', error); return }
+    if (!data || data.length === 0) { setPromoList([]); return }
+
+    const tokoIds = [...new Set(data.map((p: any) => p.toko_id).filter(Boolean))]
+    const userIds = [...new Set(data.map((p: any) => p.user_id).filter(Boolean))]
+
+    const [{ data: tokoData }, { data: profileData }] = await Promise.all([
+      supabase.from('toko').select('id, nama, alamat').in('id', tokoIds),
+      supabase.from('profiles').select('id, nama, nomor_wa').in('id', userIds),
+    ])
+
+    const tokoMap = Object.fromEntries((tokoData || []).map((t: any) => [t.id, t]))
+    const profileMap = Object.fromEntries((profileData || []).map((p: any) => [p.id, p]))
+
+    setPromoList(data.map((p: any) => ({
+      ...p,
+      toko: tokoMap[p.toko_id] || null,
+      profiles: profileMap[p.user_id] || null,
+    })))
   }
 
   // ── KYC ──
@@ -189,15 +209,9 @@ export default function AdminPage() {
 
   function getStatusLabel(status: string) {
     const map: Record<string, string> = {
-      menunggu: 'Menunggu',
-      aktif: 'Aktif',
-      ditolak: 'Ditolak',
-      berakhir: 'Berakhir',
-      proses: 'Pending',
-      terverifikasi: 'Disetujui',
-      pending: 'Pending',
-      verified: 'Verified',
-      expired: 'Expired',
+      menunggu: 'Menunggu', aktif: 'Aktif', ditolak: 'Ditolak', berakhir: 'Berakhir',
+      proses: 'Pending', terverifikasi: 'Disetujui', pending: 'Pending',
+      verified: 'Verified', expired: 'Expired',
     }
     return map[status] || status
   }
@@ -225,9 +239,7 @@ export default function AdminPage() {
       {/* Header */}
       <div className="bg-gray-900 px-4 py-4 flex items-center gap-3">
         <button onClick={() => navigate('/dashboard')}
-          className="w-8 h-8 bg-gray-700 rounded-xl flex items-center justify-center text-white hover:bg-gray-600 transition">
-          ←
-        </button>
+          className="w-8 h-8 bg-gray-700 rounded-xl flex items-center justify-center text-white hover:bg-gray-600 transition">←</button>
         <div className="flex-1">
           <h1 className="font-extrabold text-white text-base">Admin Lokaku</h1>
           <p className="text-xs text-gray-400">Dashboard pengelolaan</p>
@@ -279,10 +291,7 @@ export default function AdminPage() {
         {/* ── TAB PROMO ── */}
         {tab === 'promo' && (
           <>
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-gray-400 font-medium">{promoList.length} promo/event · {pendingPromo} menunggu</p>
-            </div>
-
+            <p className="text-xs text-gray-400 font-medium">{promoList.length} promo/event · {pendingPromo} menunggu</p>
             {promoList.length === 0 ? (
               <div className="bg-white rounded-3xl p-8 text-center border border-gray-100">
                 <p className="text-3xl mb-2">🏷️</p>
@@ -290,13 +299,9 @@ export default function AdminPage() {
               </div>
             ) : promoList.map(promo => (
               <div key={promo.id}
-                className={`bg-white rounded-2xl border shadow-sm overflow-hidden
-                  ${promo.status === 'menunggu' ? 'border-amber-200' : 'border-gray-100'}`}>
-
-                {/* Gambar */}
+                className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${promo.status === 'menunggu' ? 'border-amber-200' : 'border-gray-100'}`}>
                 <div className="relative aspect-[2/1]">
-                  <img src={promo.gambar_url} alt={promo.judul}
-                    className="w-full h-full object-cover" />
+                  <img src={promo.gambar_url} alt={promo.judul} className="w-full h-full object-cover" />
                   <div className={`absolute top-2 left-2 px-2.5 py-1 rounded-xl text-xs font-bold
                     ${promo.jenis === 'promo' ? 'bg-orange-500 text-white' : 'bg-blue-500 text-white'}`}>
                     {promo.jenis === 'promo' ? '🏷️ Promo' : '🎪 Event'}
@@ -305,40 +310,24 @@ export default function AdminPage() {
                     {getStatusLabel(promo.status)}
                   </span>
                 </div>
-
                 <div className="p-4 space-y-3">
-                  {/* Info */}
                   <div>
                     <h3 className="font-extrabold text-gray-900 text-sm">{promo.judul}</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">🏪 {promo.toko?.nama}</p>
-                    <p className="text-xs text-gray-400">👤 {promo.profiles?.nama} · +{promo.profiles?.nomor_wa}</p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      📅 {formatTanggal(promo.tanggal_mulai)} – {formatTanggal(promo.tanggal_berakhir)}
-                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">🏪 {promo.toko?.nama || '-'}</p>
+                    <p className="text-xs text-gray-400">👤 {promo.profiles?.nama || '-'} · +{promo.profiles?.nomor_wa || '-'}</p>
+                    <p className="text-xs text-gray-400 mt-1">📅 {formatTanggal(promo.tanggal_mulai)} – {formatTanggal(promo.tanggal_berakhir)}</p>
                   </div>
-
                   {promo.deskripsi && (
-                    <p className="text-xs text-gray-600 bg-gray-50 rounded-xl px-3 py-2 leading-relaxed">
-                      {promo.deskripsi}
-                    </p>
+                    <p className="text-xs text-gray-600 bg-gray-50 rounded-xl px-3 py-2 leading-relaxed">{promo.deskripsi}</p>
                   )}
-
                   {promo.catatan_admin && (
-                    <p className="text-xs text-blue-700 bg-blue-50 rounded-xl px-3 py-2">
-                      Catatan admin: {promo.catatan_admin}
-                    </p>
+                    <p className="text-xs text-blue-700 bg-blue-50 rounded-xl px-3 py-2">Catatan admin: {promo.catatan_admin}</p>
                   )}
-
-                  {/* Action: menunggu */}
                   {promo.status === 'menunggu' && (
                     <div className="space-y-2">
-                      <textarea
-                        value={catatanPromo}
-                        onChange={e => setCatatanPromo(e.target.value)}
-                        placeholder="Catatan admin (opsional approve, wajib tolak)"
-                        rows={2}
-                        className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-xs outline-none focus:border-orange-400 bg-gray-50 resize-none"
-                      />
+                      <textarea value={catatanPromo} onChange={e => setCatatanPromo(e.target.value)}
+                        placeholder="Catatan admin (opsional approve, wajib tolak)" rows={2}
+                        className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-xs outline-none focus:border-orange-400 bg-gray-50 resize-none" />
                       <div className="flex gap-2">
                         <button onClick={() => tolakPromo(promo)} disabled={processing}
                           className="flex-1 border-2 border-red-100 text-red-500 text-xs py-2.5 rounded-xl font-bold hover:bg-red-50 transition disabled:opacity-50">
@@ -351,8 +340,6 @@ export default function AdminPage() {
                       </div>
                     </div>
                   )}
-
-                  {/* Action: aktif */}
                   {promo.status === 'aktif' && (
                     <button onClick={() => nonaktifkanPromo(promo)} disabled={processing}
                       className="w-full border-2 border-red-100 text-red-500 text-xs py-2.5 rounded-xl font-bold hover:bg-red-50 transition disabled:opacity-50">
@@ -377,9 +364,7 @@ export default function AdminPage() {
               <div key={v.id} className={`bg-white rounded-2xl border shadow-sm p-4 ${v.status === 'pending' ? 'border-amber-200' : 'border-gray-100'}`}>
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <p className="font-bold text-gray-900 text-sm">
-                      {v.profiles?.nama || v.profiles?.nama_lengkap || 'Pengguna'}
-                    </p>
+                    <p className="font-bold text-gray-900 text-sm">{v.profiles?.nama || v.profiles?.nama_lengkap || 'Pengguna'}</p>
                     <p className="text-sm font-bold text-green-700 mt-0.5">+{v.nomor_wa}</p>
                     <p className="text-xs text-gray-400 mt-0.5">Kode: <span className="font-bold text-gray-700 tracking-widest">{v.kode}</span></p>
                     <p className="text-xs text-gray-400">{formatTanggal(v.created_at)}</p>
@@ -391,19 +376,13 @@ export default function AdminPage() {
                 {v.status === 'pending' && (
                   <div className="flex gap-2">
                     <button onClick={() => tolakWA(v)} disabled={processing}
-                      className="flex-1 border-2 border-red-100 text-red-500 text-xs py-2.5 rounded-xl font-bold hover:bg-red-50 transition disabled:opacity-50">
-                      Tolak
-                    </button>
+                      className="flex-1 border-2 border-red-100 text-red-500 text-xs py-2.5 rounded-xl font-bold hover:bg-red-50 transition disabled:opacity-50">Tolak</button>
                     <button onClick={() => approveWA(v)} disabled={processing}
-                      className="flex-1 bg-green-600 text-white text-xs py-2.5 rounded-xl font-bold hover:bg-green-700 transition disabled:opacity-50">
-                      Verifikasi WA
-                    </button>
+                      className="flex-1 bg-green-600 text-white text-xs py-2.5 rounded-xl font-bold hover:bg-green-700 transition disabled:opacity-50">Verifikasi WA</button>
                   </div>
                 )}
                 {v.status === 'verified' && (
-                  <p className="text-xs text-green-600 bg-green-50 rounded-xl px-3 py-2 text-center font-semibold">
-                    Nomor WA berhasil diverifikasi
-                  </p>
+                  <p className="text-xs text-green-600 bg-green-50 rounded-xl px-3 py-2 text-center font-semibold">Nomor WA berhasil diverifikasi</p>
                 )}
               </div>
             ))}
@@ -503,9 +482,7 @@ export default function AdminPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <p className="font-bold text-gray-900 text-sm truncate">{p.nama || 'Belum isi nama'}</p>
-                      {p.is_wa_verified && (
-                        <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold">WA</span>
-                      )}
+                      {p.is_wa_verified && <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold">WA</span>}
                       {p.is_verified && (
                         <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:14, height:14, background:'#3b82f6', color:'white', borderRadius:'50%', fontSize:9, fontWeight:'bold' }}>✓</span>
                       )}
@@ -544,9 +521,7 @@ export default function AdminPage() {
                     </span>
                   </div>
                   <button onClick={() => hapusToko(t.id)}
-                    className="text-xs text-red-400 hover:text-red-600 transition ml-2 flex-shrink-0">
-                    Hapus
-                  </button>
+                    className="text-xs text-red-400 hover:text-red-600 transition ml-2 flex-shrink-0">Hapus</button>
                 </div>
               </div>
             ))}
