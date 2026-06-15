@@ -19,6 +19,8 @@ import VerifikasiPage from './pages/VerifikasiPage'
 import AdminPage from './pages/AdminPage'
 import PusatBantuan from './pages/PusatBantuan'
 import VerifikasiWA from './pages/VerifikasiWA'
+import BuatPromoPage from './pages/BuatPromoPage'
+import DetailPromoPage from './pages/DetailPromoPage'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -42,12 +44,14 @@ function App() {
         <Route path="/cari" element={<CariTokoPage />} />
         <Route path="/peta" element={<PetaPage />} />
         <Route path="/toko/:id" element={<DetailTokoPage />} />
+        <Route path="/promo/:id" element={<DetailPromoPage />} />
         <Route path="/verifikasi-wa" element={<VerifikasiWA />} />
         <Route path="/preloved" element={<Navigate to="/cari?kategori=preloved" replace />} />
 
         {/* Perlu verifikasi WA */}
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         <Route path="/buat-toko" element={<ProtectedRoute><BuatTokoPage /></ProtectedRoute>} />
+        <Route path="/buat-promo" element={<ProtectedRoute><BuatPromoPage /></ProtectedRoute>} />
         <Route path="/tambah-produk" element={<ProtectedRoute><TambahProdukPage /></ProtectedRoute>} />
         <Route path="/edit-toko" element={<ProtectedRoute><EditTokoPage /></ProtectedRoute>} />
         <Route path="/produk" element={<ProtectedRoute><ProdukPage /></ProtectedRoute>} />

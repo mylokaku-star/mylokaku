@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
+import PromoSlider from '../components/PromoSlider'
 
 export default function DashboardPage() {
   const navigate = useNavigate()
@@ -14,8 +15,14 @@ export default function DashboardPage() {
   const [isVerified, setIsVerified] = useState(false)
   const [isVerifiedWA, setIsVerifiedWA] = useState(false)
   const [namaUser, setNamaUser] = useState('')
+  const [userLat, setUserLat] = useState<number | null>(null)
+  const [userLng, setUserLng] = useState<number | null>(null)
 
   useEffect(() => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { setUserLat(pos.coords.latitude); setUserLng(pos.coords.longitude) },
+      () => {}
+    )
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) {
         navigate('/login')
@@ -110,8 +117,6 @@ export default function DashboardPage() {
 
       {/* Header */}
       <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 pt-6 pb-8">
-
-        {/* Baris atas: tombol kembali — kiri, admin — kanan */}
         <div className="flex items-center justify-between mb-4">
           <button
             onClick={() => navigate('/cari')}
@@ -119,7 +124,6 @@ export default function DashboardPage() {
           >
             ← Cari Toko
           </button>
-
           {isAdmin ? (
             <button
               onClick={() => navigate('/admin')}
@@ -128,165 +132,184 @@ export default function DashboardPage() {
               🛡️ Admin
             </button>
           ) : (
-            /* placeholder agar tombol kembali tetap di kiri */
             <div className="w-10" />
           )}
         </div>
 
-        {/* Sapaan — tengah */}
         <div className="flex flex-col items-center text-center">
-          <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center text-white font-black text-xl mb-2">
-            L
-          </div>
+          <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center text-white font-black text-xl mb-2">L</div>
           <p className="text-green-100 text-xs">Selamat datang,</p>
           <div className="flex items-center gap-2 mt-0.5">
-            <p className="text-white font-bold text-sm">
-              {namaUser || user?.email}
-            </p>
+            <p className="text-white font-bold text-sm">{namaUser || user?.email}</p>
             {isVerified && (
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: '3px',
                 background: '#3b82f6', color: 'white', borderRadius: '99px',
                 padding: '1px 7px', fontSize: '10px', fontWeight: 'bold',
-              }}>
-                ✓ Terverifikasi
-              </span>
+              }}>✓ Terverifikasi</span>
             )}
           </div>
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 -mt-4 space-y-4">
+      <div className="max-w-lg mx-auto -mt-4 space-y-4">
 
-        {/* Banner verifikasi WA */}
-        {!isVerifiedWA && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between shadow-sm">
-            <div>
-              <p className="text-sm font-bold text-amber-800">📱 Verifikasi Nomor WA</p>
-              <p className="text-xs text-amber-600 mt-0.5">
-                Konfirmasi nomor WhatsApp-mu agar akun lebih aman
-              </p>
-            </div>
-            <button
-              onClick={() => navigate('/verifikasi-wa')}
-              className="text-xs bg-amber-500 text-white px-4 py-2 rounded-xl font-bold hover:bg-amber-600 transition flex-shrink-0 ml-3"
-            >
-              Verifikasi →
-            </button>
-          </div>
-        )}
-
-        {toko ? (
-          <>
-            <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100">
-              {toko.foto_url ? (
-                <img src={toko.foto_url} alt={toko.nama} className="w-full h-36 object-cover" />
-              ) : (
-                <div className={`w-full h-24 flex items-center justify-center text-4xl ${toko.jenis === 'jasa' ? 'bg-gradient-to-br from-blue-50 to-blue-100' : toko.jenis === 'preloved' ? 'bg-gradient-to-br from-purple-50 to-purple-100' : 'bg-gradient-to-br from-green-50 to-green-100'}`}>
-                  {toko.jenis === 'jasa' ? '🛠️' : toko.jenis === 'preloved' ? '♻️' : '🏪'}
-                </div>
-              )}
-              <div className="p-5">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h2 className="font-extrabold text-gray-900 text-lg">{toko.nama}</h2>
-                    <span className="text-xs text-gray-400 font-medium">{toko.kategori}</span>
-                    {toko.alamat && <p className="text-xs text-gray-400 mt-0.5">📍 {toko.alamat}</p>}
-                  </div>
-                  <span className={`text-xs px-3 py-1.5 rounded-xl font-bold ${isBuka ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-                    {isBuka ? '🟢 BUKA' : '🔴 TUTUP'}
-                  </span>
-                </div>
-                <button
-                  onClick={toggleStatus}
-                  className={`w-full py-3.5 rounded-2xl text-sm font-extrabold transition shadow-sm ${isBuka ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-100' : 'bg-green-600 hover:bg-green-700 text-white shadow-green-100'}`}
-                >
-                  {isBuka ? '🔴 Tutup Toko Sekarang' : '🟢 Buka Toko Sekarang'}
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => navigate('/edit-toko')}
-                className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition">
-                <span className="text-2xl mb-2 block">✏️</span>
-                <p className="font-bold text-gray-800 text-sm">Edit Toko</p>
-                <p className="text-xs text-gray-400 mt-0.5">Info & foto toko</p>
-              </button>
-              <button onClick={() => navigate('/produk')}
-                className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition">
-                <span className="text-2xl mb-2 block">📦</span>
-                <p className="font-bold text-gray-800 text-sm">Kelola Produk</p>
-                <p className="text-xs text-gray-400 mt-0.5">Tambah & edit produk</p>
-              </button>
-              <button onClick={() => navigate(`/toko/${toko.id}`)}
-                className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition">
-                <span className="text-2xl mb-2 block">👁️</span>
-                <p className="font-bold text-gray-800 text-sm">Lihat Toko</p>
-                <p className="text-xs text-gray-400 mt-0.5">Tampilan pembeli</p>
-              </button>
-              <button onClick={() => navigate(`/chat/${toko.id}`)}
-                className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition relative">
-                {unreadCount > 0 && (
-                  <span className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center animate-bounce">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-                <span className="text-2xl mb-2 block">💬</span>
-                <p className="font-bold text-gray-800 text-sm">Pesan Masuk</p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {unreadCount > 0 ? `${unreadCount} pesan baru` : 'Chat pembeli'}
-                </p>
-              </button>
-            </div>
-
-            {/* Verifikasi centang biru (KYC) */}
-            <div className={`rounded-2xl p-4 border shadow-sm flex items-center justify-between ${isVerified ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-100'}`}>
-              <div>
-                <p className="text-sm font-bold text-gray-800">
-                  {isVerified ? '✓ Akun Terverifikasi' : 'Verifikasi Akun'}
-                </p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {isVerified ? 'Centang biru aktif di profilmu' : 'Dapatkan centang biru untuk kepercayaan lebih'}
-                </p>
-              </div>
-              {isVerified ? (
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  width: 32, height: 32, background: '#3b82f6', color: 'white',
-                  borderRadius: '50%', fontSize: 16, fontWeight: 'bold', flexShrink: 0,
-                }}>✓</span>
-              ) : (
-                <button onClick={() => navigate('/verifikasi')}
-                  className="text-xs bg-blue-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-blue-700 transition flex-shrink-0">
-                  Ajukan →
-                </button>
-              )}
-            </div>
-
-            {/* Tombol admin */}
-            {isAdmin && (
-              <button onClick={() => navigate('/admin')}
-                className="w-full bg-gray-900 rounded-2xl p-4 border border-gray-700 shadow-sm text-left hover:bg-gray-800 transition flex items-center gap-3">
-                <span className="text-2xl">🛡️</span>
-                <div>
-                  <p className="font-bold text-white text-sm">Dashboard Admin</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Kelola verifikasi KYC & pengguna</p>
-                </div>
+        {/* Promo & Event Slider */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between px-4">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">🔥 Promo & Event Sekitar</p>
+            {toko && (
+              <button
+                onClick={() => navigate('/buat-promo')}
+                className="text-xs font-bold text-orange-500 hover:text-orange-600 transition"
+              >
+                + Buat Promo
               </button>
             )}
-          </>
-        ) : (
-          <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 text-center">
-            <div className="text-5xl mb-4">🏪</div>
-            <h2 className="font-extrabold text-gray-900 text-lg mb-2">Belum punya toko</h2>
-            <p className="text-gray-400 text-sm mb-6">Buat toko pertamamu dan mulai berjualan sekarang</p>
-            <button onClick={() => navigate('/buat-toko')}
-              className="bg-green-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-green-700 transition text-sm">
-              + Buat Toko Sekarang
-            </button>
           </div>
-        )}
+          <PromoSlider lat={userLat} lng={userLng} />
+        </div>
+
+        <div className="px-4 space-y-4">
+
+          {/* Banner verifikasi WA */}
+          {!isVerifiedWA && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+              <div>
+                <p className="text-sm font-bold text-amber-800">📱 Verifikasi Nomor WA</p>
+                <p className="text-xs text-amber-600 mt-0.5">Konfirmasi nomor WhatsApp-mu agar akun lebih aman</p>
+              </div>
+              <button
+                onClick={() => navigate('/verifikasi-wa')}
+                className="text-xs bg-amber-500 text-white px-4 py-2 rounded-xl font-bold hover:bg-amber-600 transition flex-shrink-0 ml-3"
+              >
+                Verifikasi →
+              </button>
+            </div>
+          )}
+
+          {toko ? (
+            <>
+              <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100">
+                {toko.foto_url ? (
+                  <img src={toko.foto_url} alt={toko.nama} className="w-full h-36 object-cover" />
+                ) : (
+                  <div className={`w-full h-24 flex items-center justify-center text-4xl ${toko.jenis === 'jasa' ? 'bg-gradient-to-br from-blue-50 to-blue-100' : toko.jenis === 'preloved' ? 'bg-gradient-to-br from-purple-50 to-purple-100' : 'bg-gradient-to-br from-green-50 to-green-100'}`}>
+                    {toko.jenis === 'jasa' ? '🛠️' : toko.jenis === 'preloved' ? '♻️' : '🏪'}
+                  </div>
+                )}
+                <div className="p-5">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h2 className="font-extrabold text-gray-900 text-lg">{toko.nama}</h2>
+                      <span className="text-xs text-gray-400 font-medium">{toko.kategori}</span>
+                      {toko.alamat && <p className="text-xs text-gray-400 mt-0.5">📍 {toko.alamat}</p>}
+                    </div>
+                    <span className={`text-xs px-3 py-1.5 rounded-xl font-bold ${isBuka ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                      {isBuka ? '🟢 BUKA' : '🔴 TUTUP'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={toggleStatus}
+                    className={`w-full py-3.5 rounded-2xl text-sm font-extrabold transition shadow-sm ${isBuka ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-100' : 'bg-green-600 hover:bg-green-700 text-white shadow-green-100'}`}
+                  >
+                    {isBuka ? '🔴 Tutup Toko Sekarang' : '🟢 Buka Toko Sekarang'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => navigate('/edit-toko')}
+                  className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition">
+                  <span className="text-2xl mb-2 block">✏️</span>
+                  <p className="font-bold text-gray-800 text-sm">Edit Toko</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Info & foto toko</p>
+                </button>
+                <button onClick={() => navigate('/produk')}
+                  className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition">
+                  <span className="text-2xl mb-2 block">📦</span>
+                  <p className="font-bold text-gray-800 text-sm">Kelola Produk</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Tambah & edit produk</p>
+                </button>
+                <button onClick={() => navigate(`/toko/${toko.id}`)}
+                  className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition">
+                  <span className="text-2xl mb-2 block">👁️</span>
+                  <p className="font-bold text-gray-800 text-sm">Lihat Toko</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Tampilan pembeli</p>
+                </button>
+                <button onClick={() => navigate(`/chat/${toko.id}`)}
+                  className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition relative">
+                  {unreadCount > 0 && (
+                    <span className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center animate-bounce">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                  <span className="text-2xl mb-2 block">💬</span>
+                  <p className="font-bold text-gray-800 text-sm">Pesan Masuk</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {unreadCount > 0 ? `${unreadCount} pesan baru` : 'Chat pembeli'}
+                  </p>
+                </button>
+                <button onClick={() => navigate('/buat-promo')}
+                  className="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm text-left hover:shadow-md transition col-span-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">🏷️</span>
+                    <div>
+                      <p className="font-bold text-gray-800 text-sm">Buat Promo / Event</p>
+                      <p className="text-xs text-gray-400 mt-0.5">Jangkau pembeli dalam radius 10 km · Berbayar</p>
+                    </div>
+                    <span className="ml-auto text-orange-400 text-lg">›</span>
+                  </div>
+                </button>
+              </div>
+
+              {/* Verifikasi centang biru (KYC) */}
+              <div className={`rounded-2xl p-4 border shadow-sm flex items-center justify-between ${isVerified ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-100'}`}>
+                <div>
+                  <p className="text-sm font-bold text-gray-800">
+                    {isVerified ? '✓ Akun Terverifikasi' : 'Verifikasi Akun'}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {isVerified ? 'Centang biru aktif di profilmu' : 'Dapatkan centang biru untuk kepercayaan lebih'}
+                  </p>
+                </div>
+                {isVerified ? (
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: 32, height: 32, background: '#3b82f6', color: 'white',
+                    borderRadius: '50%', fontSize: 16, fontWeight: 'bold', flexShrink: 0,
+                  }}>✓</span>
+                ) : (
+                  <button onClick={() => navigate('/verifikasi')}
+                    className="text-xs bg-blue-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-blue-700 transition flex-shrink-0">
+                    Ajukan →
+                  </button>
+                )}
+              </div>
+
+              {isAdmin && (
+                <button onClick={() => navigate('/admin')}
+                  className="w-full bg-gray-900 rounded-2xl p-4 border border-gray-700 shadow-sm text-left hover:bg-gray-800 transition flex items-center gap-3">
+                  <span className="text-2xl">🛡️</span>
+                  <div>
+                    <p className="font-bold text-white text-sm">Dashboard Admin</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Kelola verifikasi KYC & pengguna</p>
+                  </div>
+                </button>
+              )}
+            </>
+          ) : (
+            <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 text-center">
+              <div className="text-5xl mb-4">🏪</div>
+              <h2 className="font-extrabold text-gray-900 text-lg mb-2">Belum punya toko</h2>
+              <p className="text-gray-400 text-sm mb-6">Buat toko pertamamu dan mulai berjualan sekarang</p>
+              <button onClick={() => navigate('/buat-toko')}
+                className="bg-green-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-green-700 transition text-sm">
+                + Buat Toko Sekarang
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
