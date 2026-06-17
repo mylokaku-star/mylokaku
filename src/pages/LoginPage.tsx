@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 
@@ -10,7 +10,10 @@ function nomorKeEmail(nomor: string) {
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const [tab, setTab] = useState<'masuk' | 'daftar'>('masuk')
+  const [searchParams] = useSearchParams()
+  const [tab, setTab] = useState<'masuk' | 'daftar'>(
+    searchParams.get('tab') === 'daftar' ? 'daftar' : 'masuk'
+  )
   const [nomor, setNomor] = useState('')
   const [nama, setNama] = useState('')
   const [password, setPassword] = useState('')
@@ -47,7 +50,6 @@ export default function LoginPage() {
       return
     }
 
-    // Simpan nama ke tabel profiles
     if (data.user) {
       await supabase.from('profiles').insert({
         id: data.user.id,
@@ -104,7 +106,6 @@ export default function LoginPage() {
           {/* Form */}
           <div className="space-y-4">
 
-            {/* Field Nama — hanya muncul saat daftar */}
             {tab === 'daftar' && (
               <div>
                 <label className="text-sm font-semibold text-gray-700 block mb-1.5">Nama Lengkap</label>
@@ -154,7 +155,6 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              {/* 🔑 TOMBOL LUPA KATA SANDI */}
               {tab === 'masuk' && (
                 <div className="text-right mt-1.5">
                   <button

@@ -40,7 +40,7 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/lupa-password" element={<LupaPasswordPage />} />
-        <Route path="/register" element={<Navigate to="/login" replace />} />
+        <Route path="/register" element={<Navigate to="/login?tab=daftar" />} />
         <Route path="/cari" element={<CariTokoPage />} />
         <Route path="/peta" element={<PetaPage />} />
         <Route path="/toko/:id" element={<DetailTokoPage />} />

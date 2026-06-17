@@ -1,0 +1,16 @@
+{
+  "name": "Lokaku - Radar Kebutuhan Sekitarmu",
+  "short_name": "Lokaku",
+  "description": "Temukan UMKM, toko kelontong, penyedia jasa, hingga barang preloved yang aktif di sekitarmu.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#16a34a",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/favicon-32x32.png",  "sizes": "32x32",   "type": "image/png" },
+    { "src": "/icon-192x192.png",   "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512x512.png",   "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom'
 export default function LandingPage() {
   const navigate = useNavigate()
   const [openFaq, setOpenFaq] = useState<number | null>(null)
-  
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
   const [isInstallable, setIsInstallable] = useState(false)
 
@@ -14,13 +13,10 @@ export default function LandingPage() {
       setDeferredPrompt(e)
       setIsInstallable(true)
     }
-
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstallable(false)
     }
-
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
     }
@@ -79,9 +75,7 @@ export default function LandingPage() {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-green-600 rounded-xl flex items-center justify-center text-white font-bold text-sm">
-              L
-            </div>
+            <div className="w-8 h-8 bg-green-600 rounded-xl flex items-center justify-center text-white font-bold text-sm">L</div>
             <span className="font-bold text-xl tracking-tight text-gray-800">Lokaku</span>
           </div>
           <div className="flex items-center gap-3">
@@ -92,7 +86,7 @@ export default function LandingPage() {
               Masuk
             </button>
             <button
-              onClick={() => navigate('/register')}
+              onClick={() => navigate('/login?tab=daftar')}
               className="text-sm font-semibold text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-lg transition-colors shadow-sm"
             >
               Daftar
@@ -109,7 +103,6 @@ export default function LandingPage() {
             Temukan UMKM, toko kelontong, penyedia jasa, hingga barang preloved yang benar-benar aktif dan tersedia di sekitarmu saat ini.
           </p>
 
-          {/* Wrapper Tombol Aksi Tambahan (DIPERBAIKI) */}
           <div className="flex justify-center gap-3 mb-8">
             <button
               onClick={handleShare}
@@ -117,7 +110,6 @@ export default function LandingPage() {
             >
               🔗 Share Aplikasi
             </button>
-            
             {isInstallable && (
               <button
                 onClick={handleInstall}
@@ -136,7 +128,6 @@ export default function LandingPage() {
               <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">🔍</span>
               <span className="font-bold text-xs text-gray-800 group-hover:text-green-700 text-center leading-tight">Cari Toko & Jasa</span>
             </button>
-
             <button
               onClick={() => navigate('/preloved')}
               className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-amber-50 border border-gray-100 hover:border-amber-200 rounded-2xl shadow-sm transition-all group"
@@ -144,7 +135,6 @@ export default function LandingPage() {
               <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">🛍️</span>
               <span className="font-bold text-xs text-gray-800 group-hover:text-amber-700 text-center leading-tight">Barang Preloved</span>
             </button>
-
             <button
               onClick={() => navigate('/peta')}
               className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-blue-50 border border-gray-100 hover:border-blue-200 rounded-2xl shadow-sm transition-all group"
@@ -177,7 +167,7 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* FAQ + Pusat Bantuan */}
+        {/* FAQ */}
         <div className="px-6 pt-6 pb-6 border-b border-gray-100">
           <div className="max-w-md mx-auto">
             <h2 className="text-sm font-bold text-gray-700 mb-2">Pertanyaan Umum (FAQ)</h2>
@@ -199,7 +189,6 @@ export default function LandingPage() {
                 </div>
               ))}
             </div>
-
             <div className="mt-3 flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-3 py-2.5">
               <span className="text-xs text-gray-500">🔍 Punya pertanyaan lain?</span>
               <button
@@ -219,7 +208,7 @@ export default function LandingPage() {
           <div>
             <p className="text-xs text-gray-400 mb-2">Punya usaha dagang, layanan jasa, atau barang bekas layak pakai?</p>
             <button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/login?tab=daftar')}
               className="text-xs font-bold text-green-600 hover:text-green-700 underline tracking-wide"
             >
               Daftarkan Usaha Anda ke Lokaku Sekarang →

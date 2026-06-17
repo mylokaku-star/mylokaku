@@ -256,9 +256,9 @@ export default function AdminPage() {
         {[
           { label: 'Pengguna', value: penggunaList.length, color: 'text-blue-600' },
           { label: 'Toko/Jasa', value: tokoList.length, color: 'text-green-600' },
-          { label: 'KYC', value: pendingKYC, color: 'text-yellow-600' },
-          { label: 'WA', value: pendingWA, color: 'text-orange-500' },
-          { label: 'Promo', value: pendingPromo, color: 'text-red-500' },
+          { label: 'KYC',   value: verifikasiList.length,   color: 'text-yellow-600' },
+          { label: 'WA',    value: verifikasiWAList.length,  color: 'text-orange-500' },
+          { label: 'Promo', value: promoList.length,          color: 'text-red-500' },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-2xl p-2 text-center border border-gray-100 shadow-sm">
             <p className={`text-lg font-extrabold ${s.color}`}>{s.value}</p>
