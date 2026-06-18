@@ -2,6 +2,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { Toaster } from 'sonner'
 import ProtectedRoute from './components/ProtectedRoute'
+import RefreshButton from './components/RefreshButton'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import LupaPasswordPage from './pages/LupaPasswordPage'
@@ -35,12 +36,13 @@ function App() {
     <>
       <Toaster position="top-center" richColors />
       <ScrollToTop />
+      <RefreshButton />
       <Routes>
         {/* Bebas diakses */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/lupa-password" element={<LupaPasswordPage />} />
-        <Route path="/register" element={<Navigate to="/login?tab=daftar" />} />
+        <Route path="/register" element={<Navigate to="/login?tab=daftar" replace />} />
         <Route path="/cari" element={<CariTokoPage />} />
         <Route path="/peta" element={<PetaPage />} />
         <Route path="/toko/:id" element={<DetailTokoPage />} />
