@@ -12,8 +12,8 @@ export default function DashboardPage() {
   const [isBuka, setIsBuka] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [isVerified, setIsVerified] = useState(false)
-  const [isVerifiedWA, setIsVerifiedWA] = useState(false)
+  const [isVerified, setIsVerified] = useState(false)       // KYC centang biru
+  const [isVerifiedWA, setIsVerifiedWA] = useState(false)   // Verifikasi WA
   const [namaUser, setNamaUser] = useState('')
   const [userLat, setUserLat] = useState<number | null>(null)
   const [userLng, setUserLng] = useState<number | null>(null)
@@ -34,15 +34,16 @@ export default function DashboardPage() {
   }, [])
 
   async function loadToko(userId: string) {
+    // Tambah is_wa_verified ke select
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('nama, is_admin, is_verified, nomor_wa, verification_requested_at')
+      .select('nama, is_admin, is_verified, is_wa_verified, nomor_wa, verification_requested_at')
       .eq('id', userId)
       .single()
 
     setIsAdmin(profileData?.is_admin || false)
-    setIsVerified(profileData?.is_verified || false)
-    setIsVerifiedWA(profileData?.is_verified || false)
+    setIsVerified(profileData?.is_verified || false)        // KYC saja
+    setIsVerifiedWA(profileData?.is_wa_verified || false)  // WA saja
     setNamaUser(profileData?.nama || '')
 
     const { data } = await supabase
@@ -63,7 +64,7 @@ export default function DashboardPage() {
           const msg = payload.new as any
           if (!msg.is_penjual) {
             setUnreadCount(prev => prev + 1)
-            toast('💬 Pesan baru masuk!', {
+            toast('Pesan baru masuk!', {
               description: msg.isi?.length > 50 ? msg.isi.slice(0, 50) + '...' : msg.isi,
               duration: 5000,
               action: { label: 'Balas', onClick: () => navigate(`/chat/${data.id}`) },
@@ -72,7 +73,7 @@ export default function DashboardPage() {
             let original = document.title
             let blink = false
             blinkInterval = setInterval(() => {
-              document.title = blink ? `💬 Pesan Baru - Lokaku` : original
+              document.title = blink ? `Pesan Baru - Lokaku` : original
               blink = !blink
             }, 1000)
             setTimeout(() => { clearInterval(blinkInterval); document.title = original }, 10000)
@@ -97,7 +98,7 @@ export default function DashboardPage() {
     const { error } = await supabase.from('toko').update({ is_buka: newStatus }).eq('id', toko.id)
     if (!error) {
       setIsBuka(newStatus)
-      toast.success(newStatus ? 'Toko sekarang BUKA! 🎉' : 'Toko sekarang TUTUP')
+      toast.success(newStatus ? 'Toko sekarang BUKA!' : 'Toko sekarang TUTUP')
     }
   }
 
@@ -122,17 +123,15 @@ export default function DashboardPage() {
             onClick={() => navigate('/cari')}
             className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white text-xs px-3 py-1.5 rounded-xl font-bold transition"
           >
-            ← Cari Toko
+            &larr; Cari Toko
           </button>
-          {isAdmin ? (
+          {isAdmin && (
             <button
               onClick={() => navigate('/admin')}
               className="flex items-center gap-1.5 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-xl font-bold hover:bg-gray-700 transition"
             >
-              🛡️ Admin
+              Admin
             </button>
-          ) : (
-            <div className="w-10" />
           )}
         </div>
 
@@ -146,7 +145,7 @@ export default function DashboardPage() {
                 display: 'inline-flex', alignItems: 'center', gap: '3px',
                 background: '#3b82f6', color: 'white', borderRadius: '99px',
                 padding: '1px 7px', fontSize: '10px', fontWeight: 'bold',
-              }}>✓ Terverifikasi</span>
+              }}>&#10003; Terverifikasi</span>
             )}
           </div>
         </div>
@@ -154,10 +153,10 @@ export default function DashboardPage() {
 
       <div className="max-w-lg mx-auto -mt-4 space-y-4">
 
-        {/* Promo & Event Slider */}
+        {/* Promo Slider */}
         <div className="space-y-2">
           <div className="flex items-center justify-between px-4">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">🔥 Promo & Event Sekitar</p>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Promo &amp; Event Sekitar</p>
             {toko && (
               <button
                 onClick={() => navigate('/buat-promo')}
@@ -172,18 +171,18 @@ export default function DashboardPage() {
 
         <div className="px-4 space-y-4">
 
-          {/* Banner verifikasi WA */}
+          {/* Banner verifikasi WA — hanya muncul kalau belum verifikasi WA */}
           {!isVerifiedWA && (
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between shadow-sm">
               <div>
-                <p className="text-sm font-bold text-amber-800">📱 Verifikasi Nomor WA</p>
+                <p className="text-sm font-bold text-amber-800">Verifikasi Nomor WA</p>
                 <p className="text-xs text-amber-600 mt-0.5">Konfirmasi nomor WhatsApp-mu agar akun lebih aman</p>
               </div>
               <button
                 onClick={() => navigate('/verifikasi-wa')}
                 className="text-xs bg-amber-500 text-white px-4 py-2 rounded-xl font-bold hover:bg-amber-600 transition flex-shrink-0 ml-3"
               >
-                Verifikasi →
+                Verifikasi &rarr;
               </button>
             </div>
           )}
@@ -195,7 +194,7 @@ export default function DashboardPage() {
                   <img src={toko.foto_url} alt={toko.nama} className="w-full h-36 object-cover" />
                 ) : (
                   <div className={`w-full h-24 flex items-center justify-center text-4xl ${toko.jenis === 'jasa' ? 'bg-gradient-to-br from-blue-50 to-blue-100' : toko.jenis === 'preloved' ? 'bg-gradient-to-br from-purple-50 to-purple-100' : 'bg-gradient-to-br from-green-50 to-green-100'}`}>
-                    {toko.jenis === 'jasa' ? '🛠️' : toko.jenis === 'preloved' ? '♻️' : '🏪'}
+                    {toko.jenis === 'jasa' ? '&#128296;' : toko.jenis === 'preloved' ? '&#9851;' : '&#127978;'}
                   </div>
                 )}
                 <div className="p-5">
@@ -203,17 +202,17 @@ export default function DashboardPage() {
                     <div>
                       <h2 className="font-extrabold text-gray-900 text-lg">{toko.nama}</h2>
                       <span className="text-xs text-gray-400 font-medium">{toko.kategori}</span>
-                      {toko.alamat && <p className="text-xs text-gray-400 mt-0.5">📍 {toko.alamat}</p>}
+                      {toko.alamat && <p className="text-xs text-gray-400 mt-0.5">&#128205; {toko.alamat}</p>}
                     </div>
                     <span className={`text-xs px-3 py-1.5 rounded-xl font-bold ${isBuka ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-                      {isBuka ? '🟢 BUKA' : '🔴 TUTUP'}
+                      {isBuka ? 'BUKA' : 'TUTUP'}
                     </span>
                   </div>
                   <button
                     onClick={toggleStatus}
-                    className={`w-full py-3.5 rounded-2xl text-sm font-extrabold transition shadow-sm ${isBuka ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-100' : 'bg-green-600 hover:bg-green-700 text-white shadow-green-100'}`}
+                    className={`w-full py-3.5 rounded-2xl text-sm font-extrabold transition shadow-sm ${isBuka ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-green-600 hover:bg-green-700 text-white'}`}
                   >
-                    {isBuka ? '🔴 Tutup Toko Sekarang' : '🟢 Buka Toko Sekarang'}
+                    {isBuka ? 'Tutup Toko Sekarang' : 'Buka Toko Sekarang'}
                   </button>
                 </div>
               </div>
@@ -221,19 +220,19 @@ export default function DashboardPage() {
               <div className="grid grid-cols-2 gap-3">
                 <button onClick={() => navigate('/edit-toko')}
                   className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition">
-                  <span className="text-2xl mb-2 block">✏️</span>
+                  <span className="text-2xl mb-2 block">&#9999;</span>
                   <p className="font-bold text-gray-800 text-sm">Edit Toko</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Info & foto toko</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Info &amp; foto toko</p>
                 </button>
                 <button onClick={() => navigate('/produk')}
                   className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition">
-                  <span className="text-2xl mb-2 block">📦</span>
+                  <span className="text-2xl mb-2 block">&#128230;</span>
                   <p className="font-bold text-gray-800 text-sm">Kelola Produk</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Tambah & edit produk</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Tambah &amp; edit produk</p>
                 </button>
                 <button onClick={() => navigate(`/toko/${toko.id}`)}
                   className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition">
-                  <span className="text-2xl mb-2 block">👁️</span>
+                  <span className="text-2xl mb-2 block">&#128065;</span>
                   <p className="font-bold text-gray-800 text-sm">Lihat Toko</p>
                   <p className="text-xs text-gray-400 mt-0.5">Tampilan pembeli</p>
                 </button>
@@ -244,7 +243,7 @@ export default function DashboardPage() {
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
-                  <span className="text-2xl mb-2 block">💬</span>
+                  <span className="text-2xl mb-2 block">&#128172;</span>
                   <p className="font-bold text-gray-800 text-sm">Pesan Masuk</p>
                   <p className="text-xs text-gray-400 mt-0.5">
                     {unreadCount > 0 ? `${unreadCount} pesan baru` : 'Chat pembeli'}
@@ -253,21 +252,21 @@ export default function DashboardPage() {
                 <button onClick={() => navigate('/buat-promo')}
                   className="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm text-left hover:shadow-md transition col-span-2">
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl">🏷️</span>
+                    <span className="text-2xl">&#127991;</span>
                     <div>
                       <p className="font-bold text-gray-800 text-sm">Buat Promo / Event</p>
-                      <p className="text-xs text-gray-400 mt-0.5">Jangkau pembeli dalam radius 10 km · Berbayar</p>
+                      <p className="text-xs text-gray-400 mt-0.5">Jangkau pembeli dalam radius 10 km &middot; Berbayar</p>
                     </div>
-                    <span className="ml-auto text-orange-400 text-lg">›</span>
+                    <span className="ml-auto text-orange-400 text-lg">&rsaquo;</span>
                   </div>
                 </button>
               </div>
 
-              {/* Verifikasi centang biru (KYC) */}
+              {/* Verifikasi KYC — terpisah dari WA */}
               <div className={`rounded-2xl p-4 border shadow-sm flex items-center justify-between ${isVerified ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-100'}`}>
                 <div>
                   <p className="text-sm font-bold text-gray-800">
-                    {isVerified ? '✓ Akun Terverifikasi' : 'Verifikasi Akun'}
+                    {isVerified ? 'Akun Terverifikasi' : 'Verifikasi Akun (KYC)'}
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
                     {isVerified ? 'Centang biru aktif di profilmu' : 'Dapatkan centang biru untuk kepercayaan lebih'}
@@ -278,11 +277,11 @@ export default function DashboardPage() {
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     width: 32, height: 32, background: '#3b82f6', color: 'white',
                     borderRadius: '50%', fontSize: 16, fontWeight: 'bold', flexShrink: 0,
-                  }}>✓</span>
+                  }}>&#10003;</span>
                 ) : (
                   <button onClick={() => navigate('/verifikasi')}
                     className="text-xs bg-blue-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-blue-700 transition flex-shrink-0">
-                    Ajukan →
+                    Ajukan &rarr;
                   </button>
                 )}
               </div>
@@ -290,17 +289,17 @@ export default function DashboardPage() {
               {isAdmin && (
                 <button onClick={() => navigate('/admin')}
                   className="w-full bg-gray-900 rounded-2xl p-4 border border-gray-700 shadow-sm text-left hover:bg-gray-800 transition flex items-center gap-3">
-                  <span className="text-2xl">🛡️</span>
+                  <span className="text-2xl">&#128737;</span>
                   <div>
                     <p className="font-bold text-white text-sm">Dashboard Admin</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Kelola verifikasi KYC & pengguna</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Kelola verifikasi KYC &amp; pengguna</p>
                   </div>
                 </button>
               )}
             </>
           ) : (
             <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 text-center">
-              <div className="text-5xl mb-4">🏪</div>
+              <div className="text-5xl mb-4">&#127978;</div>
               <h2 className="font-extrabold text-gray-900 text-lg mb-2">Belum punya toko</h2>
               <p className="text-gray-400 text-sm mb-6">Buat toko pertamamu dan mulai berjualan sekarang</p>
               <button onClick={() => navigate('/buat-toko')}
@@ -311,6 +310,27 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Bottom nav */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex shadow-lg">
+        <button onClick={() => navigate('/cari')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
+          <span className="text-lg">&#128269;</span>
+          <span className="text-xs font-medium text-gray-400">Cari</span>
+        </button>
+        <button onClick={() => navigate('/peta')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
+          <span className="text-lg">&#128506;</span>
+          <span className="text-xs font-medium text-gray-400">Peta</span>
+        </button>
+        <button onClick={() => navigate('/dashboard')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
+          <span className="text-lg">&#127978;</span>
+          <span className="text-xs font-bold text-green-600">Toko</span>
+        </button>
+        <button onClick={() => navigate('/profil')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
+          <span className="text-lg">&#128100;</span>
+          <span className="text-xs font-medium text-gray-400">Profil</span>
+        </button>
+      </div>
+
     </div>
   )
 }
