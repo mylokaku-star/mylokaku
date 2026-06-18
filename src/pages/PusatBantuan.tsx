@@ -87,7 +87,7 @@ export default function PusatBantuan() {
   const [openFaq, setOpenFaq] = useState<number | null>(null)
   const [showPopular, setShowPopular] = useState(true)
 
-  const waNumber = "6287856672344"
+  const waNumber = "6285188357721"
   const waMessage = encodeURIComponent("Halo Lokaku, saya butuh bantuan lebih lanjut.")
   const waLink = `https://wa.me/${waNumber}?text=${waMessage}`
 

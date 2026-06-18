@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 
-const NOMOR_ADMIN = '6287856672344' // Ganti dengan nomor WA admin Lokaku
+const NOMOR_ADMIN = '6285188357721' // Ganti dengan nomor WA admin Lokaku
 
 function generateKode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString()
