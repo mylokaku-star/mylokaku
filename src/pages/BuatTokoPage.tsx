@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
-import { KATEGORI_TOKO, KATEGORI_JASA, KATEGORI_PRELOVED } from '../lib/kategori'
+import { KATEGORI_TOKO, KATEGORI_JASA } from '../lib/kategori'
 
 type JenisDaftar = 'toko' | 'jasa' | 'preloved'
 
@@ -47,30 +47,23 @@ interface SertifikatItem {
   tahun: string
 }
 
-async function daftarkanNotifikasiJam(
-  tokoId: string,
-  namaT: string,
-  jamOps: JamOperasional
-) {
+const TAG_PRELOVED = ['Campuran', 'Pakaian', 'Elektronik', 'Otomotif', 'Furnitur', 'Mainan Anak', 'Buku', 'Gadget', 'Aksesori', 'Lainnya']
+
+async function daftarkanNotifikasiJam(tokoId: string, namaT: string, jamOps: JamOperasional) {
   if (!('Notification' in window)) return
-  if (Notification.permission === 'default') {
-    await Notification.requestPermission()
-  }
+  if (Notification.permission === 'default') await Notification.requestPermission()
   if (Notification.permission !== 'granted') return
 
-  // Simpan jadwal notifikasi ke localStorage agar bisa di-restore
   const jadwal = { tokoId, nama: namaT, jamOps, terdaftar: Date.now() }
   const existing = JSON.parse(localStorage.getItem('lokaku_notif_jadwal') || '[]')
   existing.push(jadwal)
   localStorage.setItem('lokaku_notif_jadwal', JSON.stringify(existing))
 
-  // Jadwalkan untuk hari ini jika jam belum lewat
   const sekarang = new Date()
-  const hariIdx = sekarang.getDay() // 0=minggu
+  const hariIdx = sekarang.getDay()
   const hariMap: HariKey[] = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu']
   const hariHariIni = hariMap[hariIdx]
   const jamHariIni = jamOps[hariHariIni]
-
   if (!jamHariIni.buka) return
 
   function jadwalkanNotif(jamStr: string, pesan: string) {
@@ -80,11 +73,7 @@ async function daftarkanNotifikasiJam(
     const selisih = waktu.getTime() - Date.now()
     if (selisih > 0) {
       setTimeout(() => {
-        new Notification(`🏪 ${namaT}`, {
-          body: pesan,
-          icon: '/icon-192.png',
-          tag: `lokaku-${tokoId}-${jamStr}`,
-        })
+        new Notification(`🏪 ${namaT}`, { body: pesan, icon: '/icon-192x192.png', tag: `lokaku-${tokoId}-${jamStr}` })
       }, selisih)
     }
   }
@@ -103,6 +92,9 @@ export default function BuatTokoPage() {
     nama: '', deskripsi: '', kategori: '', alamat: '', telepon: '', lat: '', lng: '',
   })
 
+  // Preloved — tag jenis barang (multi select)
+  const [tagPreloved, setTagPreloved] = useState<string[]>([])
+
   // Jam Operasional (khusus toko)
   const [jamOps, setJamOps] = useState<JamOperasional>(buatJamDefault())
   const [hariDipilih, setHariDipilih] = useState<HariKey>('senin')
@@ -119,6 +111,13 @@ export default function BuatTokoPage() {
   function handleJenisChange(j: JenisDaftar) {
     setJenis(j)
     setForm(f => ({ ...f, kategori: '' }))
+    setTagPreloved([])
+  }
+
+  function toggleTag(tag: string) {
+    setTagPreloved(prev =>
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    )
   }
 
   function ambilLokasi() {
@@ -133,37 +132,26 @@ export default function BuatTokoPage() {
     )
   }
 
-  // --- Jam Operasional helpers ---
+  // Jam helpers
   function toggleHariBuka(hari: HariKey) {
-    setJamOps(prev => ({
-      ...prev,
-      [hari]: { ...prev[hari], buka: !prev[hari].buka }
-    }))
+    setJamOps(prev => ({ ...prev, [hari]: { ...prev[hari], buka: !prev[hari].buka } }))
   }
 
   function setJam(hari: HariKey, field: 'jamBuka' | 'jamTutup', val: string) {
-    setJamOps(prev => ({
-      ...prev,
-      [hari]: { ...prev[hari], [field]: val }
-    }))
+    setJamOps(prev => ({ ...prev, [hari]: { ...prev[hari], [field]: val } }))
   }
 
   function salinKeSemua(hari: HariKey) {
     const src = jamOps[hari]
     const update: Partial<JamOperasional> = {}
-    HARI_LIST.forEach(h => {
-      if (h.key !== hari) update[h.key] = { ...src }
-    })
+    HARI_LIST.forEach(h => { if (h.key !== hari) update[h.key] = { ...src } })
     setJamOps(prev => ({ ...prev, ...update }))
     toast.success('Jam berhasil disalin ke semua hari!')
   }
 
-  // --- Sertifikat helpers ---
+  // Sertifikat helpers
   function tambahSertifikat() {
-    setSertifikatList(prev => [
-      ...prev,
-      { id: crypto.randomUUID(), judul: '', institusi: '', tahun: '' }
-    ])
+    setSertifikatList(prev => [...prev, { id: crypto.randomUUID(), judul: '', institusi: '', tahun: '' }])
   }
 
   function updateSertifikat(id: string, field: keyof Omit<SertifikatItem, 'id'>, val: string) {
@@ -175,8 +163,11 @@ export default function BuatTokoPage() {
   }
 
   async function handleSubmit() {
-    if (!form.nama || !form.kategori || !form.alamat) {
-      toast.error('Nama, kategori, dan alamat wajib diisi'); return
+    if (!form.nama || !form.alamat) {
+      toast.error('Nama dan alamat wajib diisi'); return
+    }
+    if (jenis !== 'preloved' && !form.kategori) {
+      toast.error('Kategori wajib diisi'); return
     }
     setLoading(true)
     const { data: userData } = await supabase.auth.getUser()
@@ -188,7 +179,7 @@ export default function BuatTokoPage() {
     const payload: Record<string, unknown> = {
       nama: form.nama,
       deskripsi: form.deskripsi || null,
-      kategori: form.kategori,
+      kategori: jenis === 'preloved' ? (tagPreloved.length > 0 ? tagPreloved.join(', ') : 'Campuran') : form.kategori,
       jenis,
       alamat: form.alamat,
       telepon: form.telepon || null,
@@ -198,45 +189,38 @@ export default function BuatTokoPage() {
       is_buka: false,
     }
 
-    // Tambah data jam operasional untuk toko
-    if (jenis === 'toko') {
-      payload.jam_operasional = jamOps
-    }
+    if (jenis === 'toko') payload.jam_operasional = jamOps
 
-    // Tambah sertifikat & pengalaman untuk jasa
     if (jenis === 'jasa') {
       const sertValid = sertifikatList.filter(s => s.judul.trim())
       payload.sertifikat = sertValid.length > 0 ? sertValid : null
       payload.pengalaman = pengalaman.trim() || null
     }
 
+    if (jenis === 'preloved') {
+      payload.tag_barang = tagPreloved.length > 0 ? tagPreloved : null
+    }
+
     const { data: insertedData, error } = await supabase
-      .from('toko')
-      .insert(payload)
-      .select('id')
-      .single()
+      .from('toko').insert(payload).select('id').single()
 
     setLoading(false)
 
     if (error) {
       toast.error('Gagal mendaftar: ' + error.message)
     } else {
-      const msg =
-        jenis === 'toko' ? 'Toko berhasil dibuat! 🎉'
+      const msg = jenis === 'toko' ? 'Toko berhasil dibuat! 🎉'
         : jenis === 'jasa' ? 'Jasa berhasil didaftarkan! 🎉'
-        : 'Barang preloved berhasil didaftarkan! 🎉'
+        : 'Toko preloved berhasil didaftarkan! 🎉'
       toast.success(msg)
-
-      // Daftarkan notifikasi jam jika toko dan user mau
       if (jenis === 'toko' && notifJam && insertedData?.id) {
         await daftarkanNotifikasiJam(insertedData.id, form.nama, jamOps)
       }
-
       navigate('/dashboard')
     }
   }
 
-  const grupList = jenis === 'toko' ? KATEGORI_TOKO : jenis === 'jasa' ? KATEGORI_JASA : KATEGORI_PRELOVED
+  const grupList = jenis === 'toko' ? KATEGORI_TOKO : KATEGORI_JASA
 
   const jenisConfig = {
     toko: {
@@ -264,7 +248,7 @@ export default function BuatTokoPage() {
   const infoText = {
     toko: 'Daftarkan tokomu dan mulai ditemukan pembeli di sekitarmu secara realtime.',
     jasa: 'Tawarkan jasamu ke warga sekitar. Tidak perlu punya toko fisik!',
-    preloved: 'Jual barang bekas milikmu ke warga sekitar. Mudah, cepat, dan gratis!',
+    preloved: 'Buka toko preloved-mu dan jual berbagai barang bekas ke warga sekitar. Mudah, cepat, dan gratis!',
   }
 
   const hariDipilihData = jamOps[hariDipilih]
@@ -311,31 +295,67 @@ export default function BuatTokoPage() {
         {/* Form Utama */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-4">
           <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">
-            Info {jenis === 'toko' ? 'Toko' : jenis === 'jasa' ? 'Jasa' : 'Barang Preloved'}
+            Info {jenis === 'toko' ? 'Toko' : jenis === 'jasa' ? 'Jasa' : 'Toko Preloved'}
           </p>
 
+          {/* Nama */}
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">
-              {jenis === 'toko' ? 'Nama Toko' : jenis === 'jasa' ? 'Nama / Brand Jasa' : 'Nama / Judul Barang'} *
+              {jenis === 'toko' ? 'Nama Toko' : jenis === 'jasa' ? 'Nama / Brand Jasa' : 'Nama Toko Preloved'} *
             </label>
             <input name="nama" value={form.nama} onChange={handleChange}
-              placeholder={jenis === 'toko' ? 'contoh: Warung Bu Sari' : jenis === 'jasa' ? 'contoh: Laundry Pak Budi' : 'contoh: Jual Motor Honda Beat 2020'}
+              placeholder={jenis === 'toko' ? 'contoh: Warung Bu Sari' : jenis === 'jasa' ? 'contoh: Laundry Pak Budi' : 'contoh: Toko Preloved Pak Andi'}
               className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
           </div>
 
-          <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">Kategori *</label>
-            <select name="kategori" value={form.kategori} onChange={handleChange}
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition">
-              <option value="">Pilih kategori</option>
-              {grupList.map(grup => (
-                <optgroup key={grup.grup} label={`── ${grup.grup}`}>
-                  {grup.items.map(item => <option key={item} value={item}>{item}</option>)}
-                </optgroup>
-              ))}
-            </select>
-          </div>
+          {/* Kategori — hanya untuk toko & jasa */}
+          {jenis !== 'preloved' && (
+            <div>
+              <label className="text-sm font-semibold text-gray-700 block mb-1.5">Kategori *</label>
+              <select name="kategori" value={form.kategori} onChange={handleChange}
+                className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition">
+                <option value="">Pilih kategori</option>
+                {grupList.map(grup => (
+                  <optgroup key={grup.grup} label={`── ${grup.grup}`}>
+                    {grup.items.map(item => <option key={item} value={item}>{item}</option>)}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+          )}
 
+          {/* Tag Jenis Barang — hanya preloved */}
+          {jenis === 'preloved' && (
+            <div>
+              <label className="text-sm font-semibold text-gray-700 block mb-1.5">
+                Jenis Barang yang Dijual
+                <span className="text-xs font-normal text-gray-400 ml-1">(Opsional, bisa pilih lebih dari satu)</span>
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {TAG_PRELOVED.map(tag => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => toggleTag(tag)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition
+                      ${tagPreloved.includes(tag)
+                        ? 'border-purple-400 bg-purple-50 text-purple-700'
+                        : 'border-gray-100 bg-gray-50 text-gray-500 hover:border-purple-200'
+                      }`}
+                  >
+                    {tagPreloved.includes(tag) ? '✓ ' : ''}{tag}
+                  </button>
+                ))}
+              </div>
+              {tagPreloved.length > 0 && (
+                <p className="text-xs text-purple-600 font-semibold mt-2">
+                  Dipilih: {tagPreloved.join(', ')}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Alamat */}
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">
               {jenis === 'toko' ? 'Alamat Toko' : jenis === 'jasa' ? 'Area Layanan' : 'Lokasi Penjual'} *
@@ -345,82 +365,74 @@ export default function BuatTokoPage() {
               className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
           </div>
 
+          {/* WhatsApp */}
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">Nomor WhatsApp</label>
             <input name="telepon" value={form.telepon} onChange={handleChange} placeholder="08123456789"
               className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
           </div>
 
+          {/* Deskripsi — berbeda label & placeholder per jenis */}
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">
-              {jenis === 'preloved' ? 'Deskripsi Barang (kondisi, alasan jual, harga, dll)' : jenis === 'jasa' ? 'Deskripsi Jasa' : 'Deskripsi Toko'}
+              {jenis === 'preloved'
+                ? 'Keterangan & Aturan Main Toko'
+                : jenis === 'jasa'
+                  ? 'Deskripsi Jasa'
+                  : 'Deskripsi Toko'}
             </label>
+            {jenis === 'preloved' && (
+              <p className="text-xs text-gray-400 mb-2 leading-relaxed">
+                Jelaskan sistem toko, jam operasional, kebijakan retur, atau cara negosiasi harga.
+              </p>
+            )}
             <textarea name="deskripsi" value={form.deskripsi} onChange={handleChange} rows={3}
-              placeholder={jenis === 'preloved' ? 'contoh: Kondisi 90%, jarang dipakai. Harga Rp 2.500.000 nego.' : jenis === 'toko' ? 'Ceritakan tentang tokomu...' : 'Jelaskan jasa yang kamu tawarkan...'}
+              placeholder={
+                jenis === 'preloved'
+                  ? 'contoh: "Menjual barang koleksi pribadi dari baju sampai gadget. Semua barang sudah dicuci. Nego halus via WA. No retur kecuali barang tidak sesuai deskripsi."'
+                  : jenis === 'toko'
+                    ? 'Ceritakan tentang tokomu...'
+                    : 'Jelaskan jasa yang kamu tawarkan...'
+              }
               className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition resize-none" />
           </div>
         </div>
 
-        {/* ===== JAM OPERASIONAL (hanya toko) ===== */}
+        {/* JAM OPERASIONAL (hanya toko) */}
         {jenis === 'toko' && (
           <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Jam Operasional</p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Buka {jumlahHariBuka} hari/minggu
-                </p>
+                <p className="text-xs text-gray-400 mt-0.5">Buka {jumlahHariBuka} hari/minggu</p>
               </div>
               <span className="text-xl">🕐</span>
             </div>
 
-            {/* Pilih Hari */}
             <div className="flex gap-1.5">
               {HARI_LIST.map(h => {
                 const aktif = jamOps[h.key].buka
                 const dipilih = hariDipilih === h.key
                 return (
-                  <button
-                    key={h.key}
-                    type="button"
-                    onClick={() => setHariDipilih(h.key)}
+                  <button key={h.key} type="button" onClick={() => setHariDipilih(h.key)}
                     className={`flex-1 py-2 rounded-xl text-xs font-bold transition border-2
-                      ${dipilih
-                        ? 'border-green-500 bg-green-50 text-green-700'
-                        : aktif
-                          ? 'border-gray-200 bg-white text-gray-700'
-                          : 'border-gray-100 bg-gray-50 text-gray-300 line-through'
-                      }`}
-                  >
+                      ${dipilih ? 'border-green-500 bg-green-50 text-green-700'
+                        : aktif ? 'border-gray-200 bg-white text-gray-700'
+                        : 'border-gray-100 bg-gray-50 text-gray-300 line-through'}`}>
                     {h.label}
                   </button>
                 )
               })}
             </div>
 
-            {/* Detail hari dipilih */}
             <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-gray-700 capitalize">
-                  {HARI_LIST.find(h => h.key === hariDipilih)?.label === 'Sen' ? 'Senin'
-                    : HARI_LIST.find(h => h.key === hariDipilih)?.label === 'Sel' ? 'Selasa'
-                    : HARI_LIST.find(h => h.key === hariDipilih)?.label === 'Rab' ? 'Rabu'
-                    : HARI_LIST.find(h => h.key === hariDipilih)?.label === 'Kam' ? 'Kamis'
-                    : HARI_LIST.find(h => h.key === hariDipilih)?.label === 'Jum' ? 'Jumat'
-                    : HARI_LIST.find(h => h.key === hariDipilih)?.label === 'Sab' ? 'Sabtu'
-                    : 'Minggu'}
+                <span className="text-sm font-semibold text-gray-700">
+                  {{ senin:'Senin', selasa:'Selasa', rabu:'Rabu', kamis:'Kamis', jumat:'Jumat', sabtu:'Sabtu', minggu:'Minggu' }[hariDipilih]}
                 </span>
-
-                {/* Toggle buka/tutup */}
-                <button
-                  type="button"
-                  onClick={() => toggleHariBuka(hariDipilih)}
+                <button type="button" onClick={() => toggleHariBuka(hariDipilih)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition
-                    ${hariDipilihData.buka
-                      ? 'bg-green-100 text-green-700 border-2 border-green-200'
-                      : 'bg-gray-100 text-gray-400 border-2 border-gray-200'
-                    }`}
-                >
+                    ${hariDipilihData.buka ? 'bg-green-100 text-green-700 border-2 border-green-200' : 'bg-gray-100 text-gray-400 border-2 border-gray-200'}`}>
                   <span className={`w-3 h-3 rounded-full ${hariDipilihData.buka ? 'bg-green-500' : 'bg-gray-300'}`} />
                   {hariDipilihData.buka ? 'Buka' : 'Libur'}
                 </button>
@@ -431,73 +443,46 @@ export default function BuatTokoPage() {
                   <div className="flex items-center gap-3">
                     <div className="flex-1">
                       <label className="text-xs text-gray-400 font-semibold block mb-1">Jam Buka</label>
-                      <input
-                        type="time"
-                        value={hariDipilihData.jamBuka}
+                      <input type="time" value={hariDipilihData.jamBuka}
                         onChange={e => setJam(hariDipilih, 'jamBuka', e.target.value)}
-                        className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-400 bg-white transition font-semibold text-gray-800"
-                      />
+                        className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-400 bg-white transition font-semibold text-gray-800" />
                     </div>
                     <span className="text-gray-300 font-bold mt-4">→</span>
                     <div className="flex-1">
                       <label className="text-xs text-gray-400 font-semibold block mb-1">Jam Tutup</label>
-                      <input
-                        type="time"
-                        value={hariDipilihData.jamTutup}
+                      <input type="time" value={hariDipilihData.jamTutup}
                         onChange={e => setJam(hariDipilih, 'jamTutup', e.target.value)}
-                        className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-400 bg-white transition font-semibold text-gray-800"
-                      />
+                        className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-400 bg-white transition font-semibold text-gray-800" />
                     </div>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => salinKeSemua(hariDipilih)}
-                    className="w-full text-xs text-green-600 font-semibold py-2 rounded-xl border-2 border-dashed border-green-200 hover:bg-green-50 transition"
-                  >
+                  <button type="button" onClick={() => salinKeSemua(hariDipilih)}
+                    className="w-full text-xs text-green-600 font-semibold py-2 rounded-xl border-2 border-dashed border-green-200 hover:bg-green-50 transition">
                     📋 Salin jam ini ke semua hari
                   </button>
                 </>
               )}
             </div>
 
-            {/* Ringkasan jam */}
             <div className="space-y-1.5">
               {HARI_LIST.map(h => {
                 const jam = jamOps[h.key]
-                const namaHari = { senin: 'Senin', selasa: 'Selasa', rabu: 'Rabu', kamis: 'Kamis', jumat: 'Jumat', sabtu: 'Sabtu', minggu: 'Minggu' }[h.key]
+                const namaHari = { senin:'Senin', selasa:'Selasa', rabu:'Rabu', kamis:'Kamis', jumat:'Jumat', sabtu:'Sabtu', minggu:'Minggu' }[h.key]
                 return (
                   <div key={h.key} className="flex items-center justify-between text-xs">
                     <span className={`font-semibold w-14 ${jam.buka ? 'text-gray-700' : 'text-gray-300'}`}>{namaHari}</span>
-                    {jam.buka
-                      ? <span className="text-gray-500">{jam.jamBuka} – {jam.jamTutup}</span>
-                      : <span className="text-gray-300 italic">Libur</span>
-                    }
+                    {jam.buka ? <span className="text-gray-500">{jam.jamBuka} – {jam.jamTutup}</span> : <span className="text-gray-300 italic">Libur</span>}
                   </div>
                 )
               })}
             </div>
 
-            {/* Toggle notifikasi */}
-            <button
-              type="button"
-              onClick={() => setNotifJam(v => !v)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition text-left
-                ${notifJam
-                  ? 'border-green-200 bg-green-50'
-                  : 'border-gray-100 bg-gray-50'
-                }`}
-            >
+            <button type="button" onClick={() => setNotifJam(v => !v)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition text-left ${notifJam ? 'border-green-200 bg-green-50' : 'border-gray-100 bg-gray-50'}`}>
               <span className="text-xl">{notifJam ? '🔔' : '🔕'}</span>
               <div className="flex-1">
-                <p className={`text-xs font-bold ${notifJam ? 'text-green-700' : 'text-gray-400'}`}>
-                  Notifikasi jam buka & tutup
-                </p>
+                <p className={`text-xs font-bold ${notifJam ? 'text-green-700' : 'text-gray-400'}`}>Notifikasi jam buka & tutup</p>
                 <p className={`text-xs mt-0.5 ${notifJam ? 'text-green-600' : 'text-gray-300'}`}>
-                  {notifJam
-                    ? 'Lokaku akan mengingatkanmu setiap hari sesuai jadwal'
-                    : 'Notifikasi dimatikan untuk toko ini'
-                  }
+                  {notifJam ? 'Lokaku akan mengingatkanmu setiap hari sesuai jadwal' : 'Notifikasi dimatikan untuk toko ini'}
                 </p>
               </div>
               <div className={`w-10 h-5 rounded-full transition-colors flex items-center px-0.5 ${notifJam ? 'bg-green-500' : 'bg-gray-200'}`}>
@@ -507,7 +492,7 @@ export default function BuatTokoPage() {
           </div>
         )}
 
-        {/* ===== SERTIFIKAT & PENGALAMAN (hanya jasa) ===== */}
+        {/* SERTIFIKAT & PENGALAMAN (hanya jasa) */}
         {jenis === 'jasa' && (
           <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-4">
             <div className="flex items-center justify-between">
@@ -518,73 +503,45 @@ export default function BuatTokoPage() {
               <span className="text-xl">🏅</span>
             </div>
 
-            {/* Pengalaman */}
             <div>
-              <label className="text-sm font-semibold text-gray-700 block mb-1.5">
-                Ringkasan Pengalaman
-              </label>
-              <textarea
-                value={pengalaman}
-                onChange={e => setPengalaman(e.target.value)}
-                rows={2}
-                placeholder="contoh: 5 tahun pengalaman di bidang listrik rumah tangga, pernah menangani 200+ klien di Bandung..."
-                className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-400 bg-gray-50 transition resize-none"
-              />
+              <label className="text-sm font-semibold text-gray-700 block mb-1.5">Ringkasan Pengalaman</label>
+              <textarea value={pengalaman} onChange={e => setPengalaman(e.target.value)} rows={2}
+                placeholder="contoh: 5 tahun pengalaman di bidang listrik rumah tangga, pernah menangani 200+ klien..."
+                className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-400 bg-gray-50 transition resize-none" />
             </div>
 
-            {/* Sertifikat */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="text-sm font-semibold text-gray-700">Sertifikat / Penghargaan</label>
-                <button
-                  type="button"
-                  onClick={tambahSertifikat}
-                  className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-xl border-2 border-blue-100 hover:bg-blue-100 transition"
-                >
+                <button type="button" onClick={tambahSertifikat}
+                  className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-xl border-2 border-blue-100 hover:bg-blue-100 transition">
                   + Tambah
                 </button>
               </div>
-
               {sertifikatList.length === 0 && (
                 <div className="border-2 border-dashed border-gray-100 rounded-2xl py-6 text-center text-xs text-gray-300">
                   <span className="text-2xl block mb-1">📜</span>
                   Belum ada sertifikat. Klik "+ Tambah" untuk menambahkan.
                 </div>
               )}
-
               <div className="space-y-3">
                 {sertifikatList.map((s, i) => (
                   <div key={s.id} className="bg-blue-50 border-2 border-blue-100 rounded-2xl p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-blue-600">Sertifikat #{i + 1}</span>
-                      <button
-                        type="button"
-                        onClick={() => hapusSertifikat(s.id)}
-                        className="text-xs text-red-400 hover:text-red-600 font-semibold transition"
-                      >
-                        Hapus
-                      </button>
+                      <button type="button" onClick={() => hapusSertifikat(s.id)}
+                        className="text-xs text-red-400 hover:text-red-600 font-semibold transition">Hapus</button>
                     </div>
-                    <input
-                      value={s.judul}
-                      onChange={e => updateSertifikat(s.id, 'judul', e.target.value)}
+                    <input value={s.judul} onChange={e => updateSertifikat(s.id, 'judul', e.target.value)}
                       placeholder="Nama sertifikat / penghargaan"
-                      className="w-full border-2 border-blue-100 rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-400 bg-white transition"
-                    />
+                      className="w-full border-2 border-blue-100 rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-400 bg-white transition" />
                     <div className="flex gap-2">
-                      <input
-                        value={s.institusi}
-                        onChange={e => updateSertifikat(s.id, 'institusi', e.target.value)}
+                      <input value={s.institusi} onChange={e => updateSertifikat(s.id, 'institusi', e.target.value)}
                         placeholder="Institusi / lembaga"
-                        className="flex-1 border-2 border-blue-100 rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-400 bg-white transition"
-                      />
-                      <input
-                        value={s.tahun}
-                        onChange={e => updateSertifikat(s.id, 'tahun', e.target.value)}
-                        placeholder="Tahun"
-                        maxLength={4}
-                        className="w-20 border-2 border-blue-100 rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-400 bg-white transition"
-                      />
+                        className="flex-1 border-2 border-blue-100 rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-400 bg-white transition" />
+                      <input value={s.tahun} onChange={e => updateSertifikat(s.id, 'tahun', e.target.value)}
+                        placeholder="Tahun" maxLength={4}
+                        className="w-20 border-2 border-blue-100 rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-400 bg-white transition" />
                     </div>
                   </div>
                 ))}
@@ -614,7 +571,7 @@ export default function BuatTokoPage() {
         {/* Submit */}
         <button onClick={handleSubmit} disabled={loading}
           className={`w-full text-white rounded-2xl py-4 text-sm font-extrabold transition shadow-lg disabled:opacity-50 bg-gradient-to-r ${cfg.btn}`}>
-          {loading ? 'Menyimpan...' : `${cfg.icon} ${jenis === 'toko' ? 'Daftarkan Toko' : jenis === 'jasa' ? 'Daftarkan Jasa' : 'Pasang Iklan Preloved'}`}
+          {loading ? 'Menyimpan...' : `${cfg.icon} ${jenis === 'toko' ? 'Daftarkan Toko' : jenis === 'jasa' ? 'Daftarkan Jasa' : 'Buka Toko Preloved'}`}
         </button>
 
       </div>

@@ -10,6 +10,7 @@ export const KATEGORI_TOKO: { grup: string; items: string[] }[] = [
       'Camilan & Jajanan Pasar',
       'Katering & Frozen Food',
       'Bahan Kue & Kemasan',
+      'Kuliner & Makanan Lainnya',
     ],
   },
   {
@@ -20,6 +21,7 @@ export const KATEGORI_TOKO: { grup: string; items: string[] }[] = [
       'Alat Listrik & Lampu',
       'Perabotan Rumah Tangga',
       'Toko Bahan Bangunan',
+      'Sembako & Kebutuhan Rumah Lainnya',
     ],
   },
   {
@@ -28,6 +30,7 @@ export const KATEGORI_TOKO: { grup: string; items: string[] }[] = [
       'Petani Sayur & Buah Segar',
       'Peternak Lokal (Telur, Ayam Potong)',
       'Budidaya Ikan Tawar',
+      'Produk Lokal Lainnya',
     ],
   },
   {
@@ -38,6 +41,7 @@ export const KATEGORI_TOKO: { grup: string; items: string[] }[] = [
       'Sepatu, Tas & Aksesori',
       'Kosmetik, Skincare & Parfum',
       'Pakaian Bekas (Thrift Shop)',
+      'Fashion & Kecantikan Lainnya',
     ],
   },
   {
@@ -45,6 +49,7 @@ export const KATEGORI_TOKO: { grup: string; items: string[] }[] = [
     items: [
       'Showroom Mobil/Motor Bekas',
       'Suku Cadang, Ban, Oli & Helm',
+      'Otomotif & Kendaraan Lainnya',
     ],
   },
   {
@@ -53,6 +58,7 @@ export const KATEGORI_TOKO: { grup: string; items: string[] }[] = [
       'Handphone & Aksesori Gadget',
       'Konter Pulsa, Kuota & Voucher Game',
       'Elektronik Rumah Tangga',
+      'Elektronik & Gadget Lainnya',
     ],
   },
   {
@@ -63,6 +69,13 @@ export const KATEGORI_TOKO: { grup: string; items: string[] }[] = [
       'Toko Buku & Mainan Anak',
       'Pet Shop (Pakan & Obat Hewan)',
       'Alat Olahraga & Pancing',
+      'Hobi, Edukasi & Perlengkapan Lainnya',
+    ],
+  },
+  {
+    grup: 'Lain-lain',
+    items: [
+      'Toko Lain-lain',
     ],
   },
 ]
@@ -76,6 +89,7 @@ export const KATEGORI_JASA: { grup: string; items: string[] }[] = [
       'MC, DJ & Hiburan Acara',
       'Dekorasi Tenda & Panggung',
       'Fotografer & Videografer',
+      'Jasa Sosial & Gaya Hidup Lainnya',
     ],
   },
   {
@@ -85,6 +99,7 @@ export const KATEGORI_JASA: { grup: string; items: string[] }[] = [
       'Home Care Perawat',
       'Pijat Tradisional, Refleksi & Bekam',
       'Salon & MUA Panggilan',
+      'Jasa Kesehatan & Perawatan Lainnya',
     ],
   },
   {
@@ -94,6 +109,7 @@ export const KATEGORI_JASA: { grup: string; items: string[] }[] = [
       'Supir Harian & Antar-Jemput',
       'Kurir Barang & Logistik Lokal',
       'Cleaning Service / Cuci Sofa & Kasur',
+      'Jasa Harian & Logistik Lainnya',
     ],
   },
   {
@@ -105,6 +121,7 @@ export const KATEGORI_JASA: { grup: string; items: string[] }[] = [
       'Tukang Bangunan & Renovasi',
       'Sedot WC & Saluran Mampet',
       'Tebang Pohon & Tebas Rumput',
+      'Jasa Teknis & Perbaikan Lainnya',
     ],
   },
   {
@@ -115,6 +132,13 @@ export const KATEGORI_JASA: { grup: string; items: string[] }[] = [
       'Biro Jasa Dokumen (STNK, SIM, Paspor)',
       'Jasa Kreatif & Admin',
       'Mantri Hewan & Inseminasi Buatan',
+      'Jasa Edukasi & Profesional Lainnya',
+    ],
+  },
+  {
+    grup: 'Lain-lain',
+    items: [
+      'Jasa Lain-lain',
     ],
   },
 ]
@@ -127,6 +151,7 @@ export const KATEGORI_PRELOVED: { grup: string; items: string[] }[] = [
       'Motor Bekas Pribadi',
       'Sepeda Anak & Dewasa',
       'Aksesori & Suku Cadang Bekas',
+      'Kendaraan & Otomotif Bekas Lainnya',
     ],
   },
   {
@@ -135,6 +160,7 @@ export const KATEGORI_PRELOVED: { grup: string; items: string[] }[] = [
       'HP, Tablet & Laptop Bekas',
       'TV, Kulkas & Mesin Cuci Bekas',
       'Kipas, Rice Cooker & Elektronik Kecil',
+      'Gadget & Elektronik Bekas Lainnya',
     ],
   },
   {
@@ -143,6 +169,7 @@ export const KATEGORI_PRELOVED: { grup: string; items: string[] }[] = [
       'Kasur, Lemari & Sofa Bekas',
       'Meja, Kursi & Rak Buku',
       'Alat Dapur Layak Pakai',
+      'Perabotan & Alat Rumah Tangga Lainnya',
     ],
   },
   {
@@ -151,6 +178,13 @@ export const KATEGORI_PRELOVED: { grup: string; items: string[] }[] = [
       'Pakaian & Jaket Preloved',
       'Stroller & Mainan Anak Bekas',
       'Tas & Sepatu Bekas Layak Pakai',
+      'Fashion & Keperluan Anak Lainnya',
+    ],
+  },
+  {
+    grup: 'Lain-lain',
+    items: [
+      'Barang Bekas Lain-lain',
     ],
   },
 ]

@@ -1,22 +1,24 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 
 export default function ProdukPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [produk, setProduk] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [tokoId, setTokoId] = useState('')
+  const [semuaToko, setSemuaToko] = useState<any[]>([])
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState({ nama: '', harga: '', deskripsi: '', foto_url: '' })
   const [saving, setSaving] = useState(false)
   const [uploadingFoto, setUploadingFoto] = useState(false)
 
-  useEffect(() => { loadProduk() }, [])
+  useEffect(() => { loadAwal() }, [])
 
-  async function loadProduk() {
+  async function loadAwal() {
     setLoading(true)
     setError(null)
 
@@ -28,30 +30,44 @@ export default function ProdukPage() {
       return
     }
 
-    // 2. Ambil toko milik user
-    const { data: tokoData, error: tokoError } = await supabase
+    // 2. Ambil SEMUA toko milik user (bukan .single(), bisa lebih dari 1)
+    const { data: tokoList, error: tokoError } = await supabase
       .from('toko')
-      .select('id')
+      .select('id, nama, jenis')
       .eq('user_id', userData.user.id)
-      .single()
+      .order('created_at', { ascending: false })
 
     if (tokoError) {
       console.error('[ProdukPage] tokoError:', tokoError)
+      setError('Gagal memuat toko: ' + tokoError.message)
+      setLoading(false)
+      return
+    }
+
+    if (!tokoList || tokoList.length === 0) {
       setError('Toko tidak ditemukan. Buat toko terlebih dahulu.')
       setLoading(false)
       return
     }
 
-    setTokoId(tokoData.id)
+    setSemuaToko(tokoList)
 
-    // 3. Ambil produk
+    // Pilih toko: dari query param ?toko=id kalau ada, atau toko pertama
+    const tokoIdFromUrl = searchParams.get('toko')
+    const tokoTerpilih = tokoList.find(t => t.id === tokoIdFromUrl) || tokoList[0]
+
+    await loadProduk(tokoTerpilih.id)
+  }
+
+  async function loadProduk(idToko: string) {
+    setLoading(true)
+    setError(null)
+    setTokoId(idToko)
+
     const { data: produkData, error: produkError } = await supabase
       .from('produk')
       .select('*')
-      .eq('toko_id', tokoData.id)
-
-    console.log('[ProdukPage] produkData:', produkData)
-    console.log('[ProdukPage] produkError:', produkError)
+      .eq('toko_id', idToko)
 
     if (produkError) {
       setError('Gagal memuat produk: ' + produkError.message)
@@ -100,14 +116,14 @@ export default function ProdukPage() {
     }).eq('id', id)
     setSaving(false)
     if (error) { toast.error('Gagal menyimpan: ' + error.message) }
-    else { toast.success('Produk berhasil diupdate!'); setEditId(null); loadProduk() }
+    else { toast.success('Produk berhasil diupdate!'); setEditId(null); loadProduk(tokoId) }
   }
 
   async function handleHapus(id: string) {
     if (!confirm('Yakin hapus produk ini?')) return
     const { error } = await supabase.from('produk').delete().eq('id', id)
     if (error) { toast.error('Gagal hapus produk: ' + error.message) }
-    else { toast.success('Produk dihapus!'); loadProduk() }
+    else { toast.success('Produk dihapus!'); loadProduk(tokoId) }
   }
 
   function formatHarga(harga: number) {
@@ -129,16 +145,16 @@ export default function ProdukPage() {
       <div className="min-h-screen bg-gray-50">
         <div className="bg-white border-b border-gray-100 px-4 py-4 flex items-center gap-3 sticky top-0 z-10 shadow-sm">
           <button onClick={() => navigate('/dashboard')} className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">
-            &larr;
+            ←
           </button>
           <span className="font-extrabold text-gray-900">Kelola Produk</span>
         </div>
         <div className="max-w-lg mx-auto p-4 text-center py-16">
-          <p className="text-4xl mb-4">&#9888;</p>
+          <p className="text-4xl mb-4">⚠️</p>
           <p className="text-gray-700 font-bold mb-2">Terjadi masalah</p>
           <p className="text-gray-400 text-sm mb-6">{error}</p>
           <button
-            onClick={loadProduk}
+            onClick={loadAwal}
             className="bg-red-600 text-white text-sm px-6 py-2.5 rounded-xl font-bold hover:bg-red-700 transition"
           >
             Coba Lagi
@@ -153,26 +169,50 @@ export default function ProdukPage() {
       <div className="bg-white border-b border-gray-100 px-4 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/dashboard')} className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">
-            &larr;
+            ←
           </button>
           <span className="font-extrabold text-gray-900">Kelola Produk</span>
         </div>
         <button
-          onClick={() => navigate('/tambah-produk')}
+          onClick={() => navigate(`/tambah-produk?toko=${tokoId}`)}
           className="text-xs bg-red-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-red-700 transition"
         >
           + Tambah
         </button>
       </div>
 
+      {/* Switcher toko kalau punya lebih dari 1 */}
+      {semuaToko.length > 1 && (
+        <div className="max-w-lg mx-auto px-4 pt-4">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3">
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2 px-1">
+              Pilih Toko ({semuaToko.length})
+            </p>
+            <div className="flex gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+              {semuaToko.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => loadProduk(t.id)}
+                  className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border-2 transition
+                    ${tokoId === t.id ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-500'}`}
+                >
+                  <span>{t.jenis === 'jasa' ? '🛠️' : t.jenis === 'preloved' ? '♻️' : '🏪'}</span>
+                  {t.nama}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-lg mx-auto p-4">
         {produk.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-5xl mb-4">&#128230;</p>
+            <p className="text-5xl mb-4">📦</p>
             <p className="text-gray-600 font-bold mb-2">Belum ada produk</p>
             <p className="text-gray-400 text-sm mb-6">Tambahkan produk pertamamu sekarang!</p>
             <button
-              onClick={() => navigate('/tambah-produk')}
+              onClick={() => navigate(`/tambah-produk?toko=${tokoId}`)}
               className="bg-red-600 text-white text-sm px-6 py-3 rounded-2xl font-bold hover:bg-red-700 transition"
             >
               + Tambah Produk Pertama
