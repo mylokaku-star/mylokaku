@@ -5,24 +5,15 @@ import { toast } from 'sonner'
 import { KATEGORI_TOKO, KATEGORI_JASA } from '../lib/kategori'
 
 type JenisDaftar = 'toko' | 'jasa' | 'preloved'
-
 type HariKey = 'senin' | 'selasa' | 'rabu' | 'kamis' | 'jumat' | 'sabtu' | 'minggu'
 
-interface JamHari {
-  buka: boolean
-  jamBuka: string
-  jamTutup: string
-}
-
+interface JamHari { buka: boolean; jamBuka: string; jamTutup: string }
 type JamOperasional = Record<HariKey, JamHari>
 
 const HARI_LIST: { key: HariKey; label: string }[] = [
-  { key: 'senin', label: 'Sen' },
-  { key: 'selasa', label: 'Sel' },
-  { key: 'rabu', label: 'Rab' },
-  { key: 'kamis', label: 'Kam' },
-  { key: 'jumat', label: 'Jum' },
-  { key: 'sabtu', label: 'Sab' },
+  { key: 'senin', label: 'Sen' }, { key: 'selasa', label: 'Sel' },
+  { key: 'rabu', label: 'Rab' }, { key: 'kamis', label: 'Kam' },
+  { key: 'jumat', label: 'Jum' }, { key: 'sabtu', label: 'Sab' },
   { key: 'minggu', label: 'Min' },
 ]
 
@@ -30,22 +21,13 @@ const JAM_DEFAULT: JamHari = { buka: true, jamBuka: '08:00', jamTutup: '17:00' }
 
 function buatJamDefault(): JamOperasional {
   return {
-    senin: { ...JAM_DEFAULT },
-    selasa: { ...JAM_DEFAULT },
-    rabu: { ...JAM_DEFAULT },
-    kamis: { ...JAM_DEFAULT },
-    jumat: { ...JAM_DEFAULT },
-    sabtu: { ...JAM_DEFAULT },
+    senin: { ...JAM_DEFAULT }, selasa: { ...JAM_DEFAULT }, rabu: { ...JAM_DEFAULT },
+    kamis: { ...JAM_DEFAULT }, jumat: { ...JAM_DEFAULT }, sabtu: { ...JAM_DEFAULT },
     minggu: { buka: false, jamBuka: '08:00', jamTutup: '17:00' },
   }
 }
 
-interface SertifikatItem {
-  id: string
-  judul: string
-  institusi: string
-  tahun: string
-}
+interface SertifikatItem { id: string; judul: string; institusi: string; tahun: string }
 
 const TAG_PRELOVED = ['Campuran', 'Pakaian', 'Elektronik', 'Otomotif', 'Furnitur', 'Mainan Anak', 'Buku', 'Gadget', 'Aksesori', 'Lainnya']
 
@@ -53,31 +35,20 @@ async function daftarkanNotifikasiJam(tokoId: string, namaT: string, jamOps: Jam
   if (!('Notification' in window)) return
   if (Notification.permission === 'default') await Notification.requestPermission()
   if (Notification.permission !== 'granted') return
-
   const jadwal = { tokoId, nama: namaT, jamOps, terdaftar: Date.now() }
   const existing = JSON.parse(localStorage.getItem('lokaku_notif_jadwal') || '[]')
   existing.push(jadwal)
   localStorage.setItem('lokaku_notif_jadwal', JSON.stringify(existing))
-
-  const sekarang = new Date()
-  const hariIdx = sekarang.getDay()
   const hariMap: HariKey[] = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu']
-  const hariHariIni = hariMap[hariIdx]
+  const hariHariIni = hariMap[new Date().getDay()]
   const jamHariIni = jamOps[hariHariIni]
   if (!jamHariIni.buka) return
-
   function jadwalkanNotif(jamStr: string, pesan: string) {
     const [h, m] = jamStr.split(':').map(Number)
-    const waktu = new Date()
-    waktu.setHours(h, m, 0, 0)
+    const waktu = new Date(); waktu.setHours(h, m, 0, 0)
     const selisih = waktu.getTime() - Date.now()
-    if (selisih > 0) {
-      setTimeout(() => {
-        new Notification(`🏪 ${namaT}`, { body: pesan, icon: '/icon-192x192.png', tag: `lokaku-${tokoId}-${jamStr}` })
-      }, selisih)
-    }
+    if (selisih > 0) setTimeout(() => new Notification(`🏪 ${namaT}`, { body: pesan, icon: '/icon-192x192.png', tag: `lokaku-${tokoId}-${jamStr}` }), selisih)
   }
-
   jadwalkanNotif(jamHariIni.jamBuka, `Sekarang waktunya BUKA toko! (${jamHariIni.jamBuka})`)
   jadwalkanNotif(jamHariIni.jamTutup, `Waktunya TUTUP toko. (${jamHariIni.jamTutup})`)
 }
@@ -87,20 +58,11 @@ export default function BuatTokoPage() {
   const [loading, setLoading] = useState(false)
   const [loadingLokasi, setLoadingLokasi] = useState(false)
   const [jenis, setJenis] = useState<JenisDaftar>('toko')
-
-  const [form, setForm] = useState({
-    nama: '', deskripsi: '', kategori: '', alamat: '', telepon: '', lat: '', lng: '',
-  })
-
-  // Preloved — tag jenis barang (multi select)
+  const [form, setForm] = useState({ nama: '', deskripsi: '', kategori: '', alamat: '', telepon: '', lat: '', lng: '' })
   const [tagPreloved, setTagPreloved] = useState<string[]>([])
-
-  // Jam Operasional (khusus toko)
   const [jamOps, setJamOps] = useState<JamOperasional>(buatJamDefault())
   const [hariDipilih, setHariDipilih] = useState<HariKey>('senin')
   const [notifJam, setNotifJam] = useState(true)
-
-  // Sertifikat / Pengalaman (khusus jasa)
   const [sertifikatList, setSertifikatList] = useState<SertifikatItem[]>([])
   const [pengalaman, setPengalaman] = useState('')
 
@@ -109,30 +71,21 @@ export default function BuatTokoPage() {
   }
 
   function handleJenisChange(j: JenisDaftar) {
-    setJenis(j)
-    setForm(f => ({ ...f, kategori: '' }))
-    setTagPreloved([])
+    setJenis(j); setForm(f => ({ ...f, kategori: '' })); setTagPreloved([])
   }
 
   function toggleTag(tag: string) {
-    setTagPreloved(prev =>
-      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
-    )
+    setTagPreloved(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
   }
 
   function ambilLokasi() {
     setLoadingLokasi(true)
     navigator.geolocation.getCurrentPosition(
-      pos => {
-        setForm(f => ({ ...f, lat: pos.coords.latitude.toString(), lng: pos.coords.longitude.toString() }))
-        setLoadingLokasi(false)
-        toast.success('Lokasi berhasil diambil!')
-      },
+      pos => { setForm(f => ({ ...f, lat: pos.coords.latitude.toString(), lng: pos.coords.longitude.toString() })); setLoadingLokasi(false); toast.success('Lokasi berhasil diambil!') },
       () => { setLoadingLokasi(false); toast.error('Gagal ambil lokasi. Pastikan GPS aktif.') }
     )
   }
 
-  // Jam helpers
   function toggleHariBuka(hari: HariKey) {
     setJamOps(prev => ({ ...prev, [hari]: { ...prev[hari], buka: !prev[hari].buka } }))
   }
@@ -149,7 +102,6 @@ export default function BuatTokoPage() {
     toast.success('Jam berhasil disalin ke semua hari!')
   }
 
-  // Sertifikat helpers
   function tambahSertifikat() {
     setSertifikatList(prev => [...prev, { id: crypto.randomUUID(), judul: '', institusi: '', tahun: '' }])
   }
@@ -163,17 +115,27 @@ export default function BuatTokoPage() {
   }
 
   async function handleSubmit() {
-    if (!form.nama || !form.alamat) {
-      toast.error('Nama dan alamat wajib diisi'); return
-    }
-    if (jenis !== 'preloved' && !form.kategori) {
-      toast.error('Kategori wajib diisi'); return
-    }
+    if (!form.nama || !form.alamat) { toast.error('Nama dan alamat wajib diisi'); return }
+    if (jenis !== 'preloved' && !form.kategori) { toast.error('Kategori wajib diisi'); return }
+
     setLoading(true)
+
     const { data: userData } = await supabase.auth.getUser()
     if (!userData.user) {
       toast.error('Silakan login terlebih dahulu')
       setLoading(false); navigate('/login'); return
+    }
+
+    // Cek batas maksimal 3 toko per akun
+    const { count } = await supabase
+      .from('toko')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userData.user.id)
+
+    if ((count || 0) >= 3) {
+      toast.error('Kamu sudah memiliki 3 toko/jasa/preloved. Maksimal 3 per akun.')
+      setLoading(false)
+      return
     }
 
     const payload: Record<string, unknown> = {
@@ -190,28 +152,22 @@ export default function BuatTokoPage() {
     }
 
     if (jenis === 'toko') payload.jam_operasional = jamOps
-
     if (jenis === 'jasa') {
       const sertValid = sertifikatList.filter(s => s.judul.trim())
       payload.sertifikat = sertValid.length > 0 ? sertValid : null
       payload.pengalaman = pengalaman.trim() || null
     }
-
     if (jenis === 'preloved') {
       payload.tag_barang = tagPreloved.length > 0 ? tagPreloved : null
     }
 
-    const { data: insertedData, error } = await supabase
-      .from('toko').insert(payload).select('id').single()
-
+    const { data: insertedData, error } = await supabase.from('toko').insert(payload).select('id').single()
     setLoading(false)
 
     if (error) {
       toast.error('Gagal mendaftar: ' + error.message)
     } else {
-      const msg = jenis === 'toko' ? 'Toko berhasil dibuat! 🎉'
-        : jenis === 'jasa' ? 'Jasa berhasil didaftarkan! 🎉'
-        : 'Toko preloved berhasil didaftarkan! 🎉'
+      const msg = jenis === 'toko' ? 'Toko berhasil dibuat!' : jenis === 'jasa' ? 'Jasa berhasil didaftarkan!' : 'Toko preloved berhasil dibuat!'
       toast.success(msg)
       if (jenis === 'toko' && notifJam && insertedData?.id) {
         await daftarkanNotifikasiJam(insertedData.id, form.nama, jamOps)
@@ -221,38 +177,15 @@ export default function BuatTokoPage() {
   }
 
   const grupList = jenis === 'toko' ? KATEGORI_TOKO : KATEGORI_JASA
-
   const jenisConfig = {
-    toko: {
-      icon: '🏪', label: 'Pemilik Toko', sub: 'Jualan produk fisik',
-      border: 'border-green-500', bg: 'bg-green-50', text: 'text-green-700',
-      btn: 'from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-green-100',
-      infoBg: 'bg-green-50', infoText: 'text-green-700',
-    },
-    jasa: {
-      icon: '🛠️', label: 'Penyedia Jasa', sub: 'Tawarkan layanan',
-      border: 'border-blue-500', bg: 'bg-blue-50', text: 'text-blue-700',
-      btn: 'from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-blue-100',
-      infoBg: 'bg-blue-50', infoText: 'text-blue-700',
-    },
-    preloved: {
-      icon: '♻️', label: 'Jual Barang Bekas', sub: 'Preloved & secondhand',
-      border: 'border-purple-500', bg: 'bg-purple-50', text: 'text-purple-700',
-      btn: 'from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 shadow-purple-100',
-      infoBg: 'bg-purple-50', infoText: 'text-purple-700',
-    },
+    toko:     { icon: '🏪', label: 'Pemilik Toko',    sub: 'Jualan produk fisik',    border: 'border-green-500',  bg: 'bg-green-50',  text: 'text-green-700',  btn: 'from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-green-100',  infoBg: 'bg-green-50',  infoText: 'text-green-700' },
+    jasa:     { icon: '🛠️', label: 'Penyedia Jasa',   sub: 'Tawarkan layanan',       border: 'border-blue-500',   bg: 'bg-blue-50',   text: 'text-blue-700',   btn: 'from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-blue-100',   infoBg: 'bg-blue-50',   infoText: 'text-blue-700' },
+    preloved: { icon: '♻️', label: 'Jual Barang Bekas', sub: 'Preloved & secondhand', border: 'border-purple-500', bg: 'bg-purple-50', text: 'text-purple-700', btn: 'from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 shadow-purple-100', infoBg: 'bg-purple-50', infoText: 'text-purple-700' },
   }
-
   const cfg = jenisConfig[jenis]
-
-  const infoText = {
-    toko: 'Daftarkan tokomu dan mulai ditemukan pembeli di sekitarmu secara realtime.',
-    jasa: 'Tawarkan jasamu ke warga sekitar. Tidak perlu punya toko fisik!',
-    preloved: 'Buka toko preloved-mu dan jual berbagai barang bekas ke warga sekitar. Mudah, cepat, dan gratis!',
-  }
-
   const hariDipilihData = jamOps[hariDipilih]
   const jumlahHariBuka = HARI_LIST.filter(h => jamOps[h.key].buka).length
+  const namaHariMap: Record<HariKey, string> = { senin:'Senin', selasa:'Selasa', rabu:'Rabu', kamis:'Kamis', jumat:'Jumat', sabtu:'Sabtu', minggu:'Minggu' }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-8">
@@ -262,7 +195,7 @@ export default function BuatTokoPage() {
         <button onClick={() => navigate('/dashboard')} className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">←</button>
         <div>
           <h1 className="font-extrabold text-gray-900 text-base">Daftar Toko / Jasa / Preloved</h1>
-          <p className="text-xs text-gray-400">Gratis selamanya</p>
+          <p className="text-xs text-gray-400">Gratis selamanya · Maks. 3 per akun</p>
         </div>
       </div>
 
@@ -289,7 +222,11 @@ export default function BuatTokoPage() {
         {/* Info */}
         <div className={`rounded-2xl px-4 py-3 flex items-start gap-2 ${cfg.infoBg}`}>
           <span className="text-lg">{cfg.icon}</span>
-          <p className={`text-xs leading-relaxed ${cfg.infoText}`}>{infoText[jenis]}</p>
+          <p className={`text-xs leading-relaxed ${cfg.infoText}`}>
+            {jenis === 'toko' ? 'Daftarkan tokomu dan mulai ditemukan pembeli di sekitarmu secara realtime.'
+            : jenis === 'jasa' ? 'Tawarkan jasamu ke warga sekitar. Tidak perlu punya toko fisik!'
+            : 'Buka toko preloved-mu dan jual berbagai barang bekas ke warga sekitar. Mudah, cepat, dan gratis!'}
+          </p>
         </div>
 
         {/* Form Utama */}
@@ -298,7 +235,6 @@ export default function BuatTokoPage() {
             Info {jenis === 'toko' ? 'Toko' : jenis === 'jasa' ? 'Jasa' : 'Toko Preloved'}
           </p>
 
-          {/* Nama */}
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">
               {jenis === 'toko' ? 'Nama Toko' : jenis === 'jasa' ? 'Nama / Brand Jasa' : 'Nama Toko Preloved'} *
@@ -308,7 +244,7 @@ export default function BuatTokoPage() {
               className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
           </div>
 
-          {/* Kategori — hanya untuk toko & jasa */}
+          {/* Kategori — hanya toko & jasa */}
           {jenis !== 'preloved' && (
             <div>
               <label className="text-sm font-semibold text-gray-700 block mb-1.5">Kategori *</label>
@@ -324,38 +260,27 @@ export default function BuatTokoPage() {
             </div>
           )}
 
-          {/* Tag Jenis Barang — hanya preloved */}
+          {/* Tag Jenis Barang — khusus preloved */}
           {jenis === 'preloved' && (
             <div>
               <label className="text-sm font-semibold text-gray-700 block mb-1.5">
                 Jenis Barang yang Dijual
-                <span className="text-xs font-normal text-gray-400 ml-1">(Opsional, bisa pilih lebih dari satu)</span>
+                <span className="text-xs font-normal text-gray-400 ml-1">(opsional, bisa pilih lebih dari satu)</span>
               </label>
               <div className="flex flex-wrap gap-2">
                 {TAG_PRELOVED.map(tag => (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => toggleTag(tag)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition
-                      ${tagPreloved.includes(tag)
-                        ? 'border-purple-400 bg-purple-50 text-purple-700'
-                        : 'border-gray-100 bg-gray-50 text-gray-500 hover:border-purple-200'
-                      }`}
-                  >
+                  <button key={tag} type="button" onClick={() => toggleTag(tag)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition ${tagPreloved.includes(tag) ? 'border-purple-400 bg-purple-50 text-purple-700' : 'border-gray-100 bg-gray-50 text-gray-500 hover:border-purple-200'}`}>
                     {tagPreloved.includes(tag) ? '✓ ' : ''}{tag}
                   </button>
                 ))}
               </div>
               {tagPreloved.length > 0 && (
-                <p className="text-xs text-purple-600 font-semibold mt-2">
-                  Dipilih: {tagPreloved.join(', ')}
-                </p>
+                <p className="text-xs text-purple-600 font-semibold mt-2">Dipilih: {tagPreloved.join(', ')}</p>
               )}
             </div>
           )}
 
-          {/* Alamat */}
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">
               {jenis === 'toko' ? 'Alamat Toko' : jenis === 'jasa' ? 'Area Layanan' : 'Lokasi Penjual'} *
@@ -365,40 +290,31 @@ export default function BuatTokoPage() {
               className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
           </div>
 
-          {/* WhatsApp */}
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">Nomor WhatsApp</label>
             <input name="telepon" value={form.telepon} onChange={handleChange} placeholder="08123456789"
               className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
           </div>
 
-          {/* Deskripsi — berbeda label & placeholder per jenis */}
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">
-              {jenis === 'preloved'
-                ? 'Keterangan & Aturan Main Toko'
-                : jenis === 'jasa'
-                  ? 'Deskripsi Jasa'
-                  : 'Deskripsi Toko'}
+              {jenis === 'preloved' ? 'Keterangan & Aturan Main Toko' : jenis === 'jasa' ? 'Deskripsi Jasa' : 'Deskripsi Toko'}
             </label>
             {jenis === 'preloved' && (
-              <p className="text-xs text-gray-400 mb-2 leading-relaxed">
-                Jelaskan sistem toko, jam operasional, kebijakan retur, atau cara negosiasi harga.
-              </p>
+              <p className="text-xs text-gray-400 mb-2 leading-relaxed">Jelaskan sistem toko, jam, kebijakan retur, atau cara nego harga.</p>
             )}
             <textarea name="deskripsi" value={form.deskripsi} onChange={handleChange} rows={3}
               placeholder={
                 jenis === 'preloved'
-                  ? 'contoh: "Menjual barang koleksi pribadi dari baju sampai gadget. Semua barang sudah dicuci. Nego halus via WA. No retur kecuali barang tidak sesuai deskripsi."'
-                  : jenis === 'toko'
-                    ? 'Ceritakan tentang tokomu...'
-                    : 'Jelaskan jasa yang kamu tawarkan...'
+                  ? '"Menjual barang koleksi pribadi dari baju sampai gadget. Semua barang sudah dicuci. Nego halus via WA."'
+                  : jenis === 'toko' ? 'Ceritakan tentang tokomu...'
+                  : 'Jelaskan jasa yang kamu tawarkan...'
               }
               className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition resize-none" />
           </div>
         </div>
 
-        {/* JAM OPERASIONAL (hanya toko) */}
+        {/* JAM OPERASIONAL — khusus toko */}
         {jenis === 'toko' && (
           <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-4">
             <div className="flex items-center justify-between">
@@ -415,10 +331,7 @@ export default function BuatTokoPage() {
                 const dipilih = hariDipilih === h.key
                 return (
                   <button key={h.key} type="button" onClick={() => setHariDipilih(h.key)}
-                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition border-2
-                      ${dipilih ? 'border-green-500 bg-green-50 text-green-700'
-                        : aktif ? 'border-gray-200 bg-white text-gray-700'
-                        : 'border-gray-100 bg-gray-50 text-gray-300 line-through'}`}>
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition border-2 ${dipilih ? 'border-green-500 bg-green-50 text-green-700' : aktif ? 'border-gray-200 bg-white text-gray-700' : 'border-gray-100 bg-gray-50 text-gray-300 line-through'}`}>
                     {h.label}
                   </button>
                 )
@@ -427,37 +340,31 @@ export default function BuatTokoPage() {
 
             <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-gray-700">
-                  {{ senin:'Senin', selasa:'Selasa', rabu:'Rabu', kamis:'Kamis', jumat:'Jumat', sabtu:'Sabtu', minggu:'Minggu' }[hariDipilih]}
-                </span>
+                <span className="text-sm font-semibold text-gray-700">{namaHariMap[hariDipilih]}</span>
                 <button type="button" onClick={() => toggleHariBuka(hariDipilih)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition
-                    ${hariDipilihData.buka ? 'bg-green-100 text-green-700 border-2 border-green-200' : 'bg-gray-100 text-gray-400 border-2 border-gray-200'}`}>
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition ${hariDipilihData.buka ? 'bg-green-100 text-green-700 border-2 border-green-200' : 'bg-gray-100 text-gray-400 border-2 border-gray-200'}`}>
                   <span className={`w-3 h-3 rounded-full ${hariDipilihData.buka ? 'bg-green-500' : 'bg-gray-300'}`} />
                   {hariDipilihData.buka ? 'Buka' : 'Libur'}
                 </button>
               </div>
-
               {hariDipilihData.buka && (
                 <>
                   <div className="flex items-center gap-3">
                     <div className="flex-1">
                       <label className="text-xs text-gray-400 font-semibold block mb-1">Jam Buka</label>
-                      <input type="time" value={hariDipilihData.jamBuka}
-                        onChange={e => setJam(hariDipilih, 'jamBuka', e.target.value)}
+                      <input type="time" value={hariDipilihData.jamBuka} onChange={e => setJam(hariDipilih, 'jamBuka', e.target.value)}
                         className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-400 bg-white transition font-semibold text-gray-800" />
                     </div>
                     <span className="text-gray-300 font-bold mt-4">→</span>
                     <div className="flex-1">
                       <label className="text-xs text-gray-400 font-semibold block mb-1">Jam Tutup</label>
-                      <input type="time" value={hariDipilihData.jamTutup}
-                        onChange={e => setJam(hariDipilih, 'jamTutup', e.target.value)}
+                      <input type="time" value={hariDipilihData.jamTutup} onChange={e => setJam(hariDipilih, 'jamTutup', e.target.value)}
                         className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-400 bg-white transition font-semibold text-gray-800" />
                     </div>
                   </div>
                   <button type="button" onClick={() => salinKeSemua(hariDipilih)}
                     className="w-full text-xs text-green-600 font-semibold py-2 rounded-xl border-2 border-dashed border-green-200 hover:bg-green-50 transition">
-                    📋 Salin jam ini ke semua hari
+                    Salin jam ini ke semua hari
                   </button>
                 </>
               )}
@@ -466,10 +373,9 @@ export default function BuatTokoPage() {
             <div className="space-y-1.5">
               {HARI_LIST.map(h => {
                 const jam = jamOps[h.key]
-                const namaHari = { senin:'Senin', selasa:'Selasa', rabu:'Rabu', kamis:'Kamis', jumat:'Jumat', sabtu:'Sabtu', minggu:'Minggu' }[h.key]
                 return (
                   <div key={h.key} className="flex items-center justify-between text-xs">
-                    <span className={`font-semibold w-14 ${jam.buka ? 'text-gray-700' : 'text-gray-300'}`}>{namaHari}</span>
+                    <span className={`font-semibold w-14 ${jam.buka ? 'text-gray-700' : 'text-gray-300'}`}>{namaHariMap[h.key]}</span>
                     {jam.buka ? <span className="text-gray-500">{jam.jamBuka} – {jam.jamTutup}</span> : <span className="text-gray-300 italic">Libur</span>}
                   </div>
                 )
@@ -482,7 +388,7 @@ export default function BuatTokoPage() {
               <div className="flex-1">
                 <p className={`text-xs font-bold ${notifJam ? 'text-green-700' : 'text-gray-400'}`}>Notifikasi jam buka & tutup</p>
                 <p className={`text-xs mt-0.5 ${notifJam ? 'text-green-600' : 'text-gray-300'}`}>
-                  {notifJam ? 'Lokaku akan mengingatkanmu setiap hari sesuai jadwal' : 'Notifikasi dimatikan untuk toko ini'}
+                  {notifJam ? 'Lokaku akan mengingatkanmu setiap hari sesuai jadwal' : 'Notifikasi dimatikan'}
                 </p>
               </div>
               <div className={`w-10 h-5 rounded-full transition-colors flex items-center px-0.5 ${notifJam ? 'bg-green-500' : 'bg-gray-200'}`}>
@@ -492,24 +398,22 @@ export default function BuatTokoPage() {
           </div>
         )}
 
-        {/* SERTIFIKAT & PENGALAMAN (hanya jasa) */}
+        {/* SERTIFIKAT & PENGALAMAN — khusus jasa */}
         {jenis === 'jasa' && (
           <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Keahlian & Pengalaman</p>
-                <p className="text-xs text-gray-400 mt-0.5">Opsional, tapi meningkatkan kepercayaan</p>
+                <p className="text-xs text-gray-400 mt-0.5">Opsional, meningkatkan kepercayaan</p>
               </div>
               <span className="text-xl">🏅</span>
             </div>
-
             <div>
               <label className="text-sm font-semibold text-gray-700 block mb-1.5">Ringkasan Pengalaman</label>
               <textarea value={pengalaman} onChange={e => setPengalaman(e.target.value)} rows={2}
                 placeholder="contoh: 5 tahun pengalaman di bidang listrik rumah tangga, pernah menangani 200+ klien..."
                 className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-400 bg-gray-50 transition resize-none" />
             </div>
-
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="text-sm font-semibold text-gray-700">Sertifikat / Penghargaan</label>
@@ -521,7 +425,7 @@ export default function BuatTokoPage() {
               {sertifikatList.length === 0 && (
                 <div className="border-2 border-dashed border-gray-100 rounded-2xl py-6 text-center text-xs text-gray-300">
                   <span className="text-2xl block mb-1">📜</span>
-                  Belum ada sertifikat. Klik "+ Tambah" untuk menambahkan.
+                  Belum ada sertifikat. Klik "+ Tambah".
                 </div>
               )}
               <div className="space-y-3">
@@ -529,8 +433,7 @@ export default function BuatTokoPage() {
                   <div key={s.id} className="bg-blue-50 border-2 border-blue-100 rounded-2xl p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-blue-600">Sertifikat #{i + 1}</span>
-                      <button type="button" onClick={() => hapusSertifikat(s.id)}
-                        className="text-xs text-red-400 hover:text-red-600 font-semibold transition">Hapus</button>
+                      <button type="button" onClick={() => hapusSertifikat(s.id)} className="text-xs text-red-400 hover:text-red-600 font-semibold transition">Hapus</button>
                     </div>
                     <input value={s.judul} onChange={e => updateSertifikat(s.id, 'judul', e.target.value)}
                       placeholder="Nama sertifikat / penghargaan"
