@@ -8,6 +8,7 @@ export default function ChatPage() {
   const navigate = useNavigate()
   const [toko, setToko] = useState<any>(null)
   const [tokoOwnerVerified, setTokoOwnerVerified] = useState(false)
+  const [semuaToko, setSemuaToko] = useState<any[]>([]) // untuk switcher penjual
   const [pesan, setPesan] = useState<any[]>([])
   const [input, setInput] = useState('')
   const [user, setUser] = useState<any>(null)
@@ -66,7 +67,6 @@ export default function ChatPage() {
     channelRef.current = channel
   }, [tokoId])
 
-  // Load nama & status verifikasi dari list pembeli
   async function loadProfilePembeli(ids: string[]) {
     if (ids.length === 0) return
     const { data } = await supabase
@@ -86,7 +86,6 @@ export default function ChatPage() {
         .from('toko').select('*').eq('id', tokoId).single()
       setToko(tokoData)
 
-      // Cek verifikasi pemilik toko
       if (tokoData?.user_id) {
         const { data: ownerProfile } = await supabase
           .from('profiles').select('is_verified').eq('id', tokoData.user_id).single()
@@ -95,6 +94,16 @@ export default function ChatPage() {
 
       const penjual = tokoData?.user_id === userData.user.id
       setIsPenjual(penjual)
+
+      // Kalau penjual, load semua toko miliknya untuk switcher
+      if (penjual) {
+        const { data: tokoList } = await supabase
+          .from('toko')
+          .select('id, nama, jenis')
+          .eq('user_id', userData.user.id)
+          .order('created_at', { ascending: false })
+        setSemuaToko(tokoList || [])
+      }
 
       if (penjual) {
         const { data: pesanData } = await supabase
@@ -109,7 +118,6 @@ export default function ChatPage() {
         })
         setPembeliList(unique)
 
-        // Load profil semua pembeli
         const ids = unique.map(u => u.pembeli_id).filter(Boolean)
         await loadProfilePembeli(ids)
 
@@ -163,7 +171,6 @@ export default function ChatPage() {
     return str?.charAt(0).toUpperCase() || '?'
   }
 
-  // Badge centang biru inline
   function BadgeBiru({ size = 12 }: { size?: number }) {
     return (
       <span title="Terverifikasi" style={{
@@ -184,21 +191,42 @@ export default function ChatPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
 
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-4 py-4 flex items-center gap-3 sticky top-0 z-10 shadow-sm">
-        <button onClick={() => navigate(isPenjual ? '/dashboard' : `/toko/${tokoId}`)}
-          className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">←</button>
-        <div className="w-9 h-9 bg-green-100 rounded-xl flex items-center justify-center text-green-700 font-bold text-sm">
-          {getInisial(toko?.nama || '')}
-        </div>
-        <div className="flex-1 min-w-0">
-          {/* Nama toko + centang biru kalau penjual terverifikasi */}
-          <div className="flex items-center gap-1.5">
-            <h1 className="font-semibold text-gray-800 text-sm truncate">{toko?.nama}</h1>
-            {tokoOwnerVerified && <BadgeBiru size={14} />}
+      <div className="bg-white border-b border-gray-100 px-4 py-4 sticky top-0 z-10 shadow-sm">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate(isPenjual ? '/dashboard' : `/toko/${tokoId}`)}
+            className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-200 transition flex-shrink-0">←</button>
+          <div className="w-9 h-9 bg-green-100 rounded-xl flex items-center justify-center text-green-700 font-bold text-sm flex-shrink-0">
+            {getInisial(toko?.nama || '')}
           </div>
-          <p className="text-xs text-gray-400">{isPenjual ? 'Dashboard Penjual' : 'Chat dengan Penjual'}</p>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h1 className="font-semibold text-gray-800 text-sm truncate">{toko?.nama}</h1>
+              {tokoOwnerVerified && <BadgeBiru size={14} />}
+            </div>
+            <p className="text-xs text-gray-400">{isPenjual ? 'Dashboard Penjual' : 'Chat dengan Penjual'}</p>
+          </div>
+          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${toko?.is_buka ? 'bg-green-400' : 'bg-gray-300'}`} />
         </div>
-        <div className={`w-2 h-2 rounded-full ${toko?.is_buka ? 'bg-green-400' : 'bg-gray-300'}`} />
+
+        {/* Switcher toko — hanya muncul untuk penjual yang punya lebih dari 1 toko */}
+        {isPenjual && semuaToko.length > 1 && (
+          <div className="mt-3 flex gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+            {semuaToko.map(t => (
+              <button
+                key={t.id}
+                onClick={() => navigate(`/chat/${t.id}`)}
+                className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition
+                  ${t.id === tokoId
+                    ? 'border-green-500 bg-green-50 text-green-700'
+                    : 'border-gray-100 bg-gray-50 text-gray-500 hover:border-green-200'
+                  }`}
+              >
+                <span>{t.jenis === 'jasa' ? '🛠️' : t.jenis === 'preloved' ? '♻️' : '🏪'}</span>
+                {t.nama}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Inbox pembeli (untuk penjual) */}
@@ -217,7 +245,6 @@ export default function ChatPage() {
                     {getInisial(namaPembeli)}
                   </div>
                   <span className="text-xs truncate flex-1">{namaPembeli}</span>
-                  {/* Centang biru pembeli di inbox */}
                   {isVerifiedPembeli && <BadgeBiru size={12} />}
                 </button>
               )
@@ -245,7 +272,6 @@ export default function ChatPage() {
                       <span className="text-xs text-gray-400">
                         {isPenjual ? '👤 Pembeli' : '🏪 Penjual'}
                       </span>
-                      {/* Centang biru di label pengirim */}
                       {!isPenjual && tokoOwnerVerified && <BadgeBiru size={11} />}
                       {isPenjual && selectedPembeli && profileMap[selectedPembeli]?.is_verified && <BadgeBiru size={11} />}
                     </div>
