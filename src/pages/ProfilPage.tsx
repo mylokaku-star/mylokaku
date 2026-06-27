@@ -50,7 +50,7 @@ export default function ProfilPage() {
     }
 
     const [{ data: tokoData }, { count: keranjangCount }, { count: wishlistCount }] = await Promise.all([
-      supabase.from('toko').select('*').eq('user_id', userData.user.id).single(),
+      supabase.from('toko').select('*').eq('user_id', userData.user.id).maybeSingle(),
       supabase.from('keranjang').select('*', { count: 'exact', head: true }).eq('user_id', userData.user.id),
       supabase.from('wishlist_produk').select('*', { count: 'exact', head: true }).eq('user_id', userData.user.id),
     ])
