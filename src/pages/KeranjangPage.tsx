@@ -59,7 +59,7 @@ export default function KeranjangPage() {
     await loadKeranjang(user.id)
   }
 
-  async function kurang(keranjangId: string, jumlahSekarang: number, tokoId: string) {
+  async function kurang(keranjangId: string, jumlahSekarang: number) {
     if (jumlahSekarang <= 1) {
       await supabase.from('keranjang').delete().eq('id', keranjangId)
     } else {
@@ -226,7 +226,7 @@ export default function KeranjangPage() {
                             <div className="flex flex-col items-end gap-2 flex-shrink-0">
                               <button onClick={() => hapusItem(k.id)} className="text-xs text-gray-300 hover:text-red-400 transition">✕</button>
                               <div className="flex items-center gap-2 bg-gray-50 rounded-xl p-1">
-                                <button onClick={() => kurang(k.id, k.jumlah, tokoId)}
+                                <button onClick={() => kurang(k.id, k.jumlah)}
                                   className="w-7 h-7 bg-white rounded-lg flex items-center justify-center font-bold text-gray-700 shadow-sm text-sm">−</button>
                                 <span className="font-extrabold text-gray-900 text-sm w-4 text-center">{k.jumlah}</span>
                                 <button onClick={() => tambah(k.id, k.jumlah)}

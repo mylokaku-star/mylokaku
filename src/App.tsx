@@ -1,8 +1,6 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { Toaster } from 'sonner'
-import ProtectedRoute from './components/ProtectedRoute'
-import RefreshButton from './components/RefreshButton'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import LupaPasswordPage from './pages/LupaPasswordPage'
@@ -21,15 +19,33 @@ import AdminPage from './pages/AdminPage'
 import PusatBantuan from './pages/PusatBantuan'
 import VerifikasiWA from './pages/VerifikasiWA'
 import BuatPromoPage from './pages/BuatPromoPage'
-import DetailPromoPage from './pages/DetailPromoPage'
 import KeranjangPage from './pages/KeranjangPage'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
-  useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [pathname])
+  useEffect(() => { window.scrollTo(0, 0) }, [pathname])
   return null
+}
+
+function RefreshButton() {
+  const { pathname } = useLocation()
+  if (pathname.startsWith('/chat')) return null
+  return (
+    <button
+      onClick={() => window.location.reload()}
+      style={{
+        position: 'fixed', bottom: '80px', right: '16px',
+        width: '40px', height: '40px', borderRadius: '50%',
+        background: 'white', border: '1.5px solid #e5e7eb',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer', zIndex: 40, fontSize: '16px',
+      }}
+      title="Refresh halaman"
+    >
+      🔄
+    </button>
+  )
 }
 
 function App() {
@@ -39,32 +55,28 @@ function App() {
       <ScrollToTop />
       <RefreshButton />
       <Routes>
-        {/* Bebas diakses */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/lupa-password" element={<LupaPasswordPage />} />
-        <Route path="/register" element={<Navigate to="/login?tab=daftar" replace />} />
+        <Route path="/register" element={<Navigate to="/login" replace />} />
         <Route path="/cari" element={<CariTokoPage />} />
         <Route path="/peta" element={<PetaPage />} />
         <Route path="/toko/:id" element={<DetailTokoPage />} />
-        <Route path="/promo/:id" element={<DetailPromoPage />} />
         <Route path="/verifikasi-wa" element={<VerifikasiWA />} />
         <Route path="/preloved" element={<Navigate to="/cari?kategori=preloved" replace />} />
-
-        {/* Perlu verifikasi WA */}
-        <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-        <Route path="/buat-toko" element={<ProtectedRoute><BuatTokoPage /></ProtectedRoute>} />
-        <Route path="/buat-promo" element={<ProtectedRoute><BuatPromoPage /></ProtectedRoute>} />
-        <Route path="/tambah-produk" element={<ProtectedRoute><TambahProdukPage /></ProtectedRoute>} />
-        <Route path="/edit-toko" element={<ProtectedRoute><EditTokoPage /></ProtectedRoute>} />
-        <Route path="/produk" element={<ProtectedRoute><ProdukPage /></ProtectedRoute>} />
-        <Route path="/profil" element={<ProtectedRoute><ProfilPage /></ProtectedRoute>} />
-        <Route path="/chat/:tokoId" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
-        <Route path="/verifikasi" element={<ProtectedRoute><VerifikasiPage /></ProtectedRoute>} />
-        <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
-        <Route path="/pusat-bantuan" element={<ProtectedRoute><PusatBantuan /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/buat-toko" element={<BuatTokoPage />} />
+        <Route path="/buat-promo" element={<BuatPromoPage />} />
+        <Route path="/tambah-produk" element={<TambahProdukPage />} />
+        <Route path="/edit-toko" element={<EditTokoPage />} />
+        <Route path="/produk" element={<ProdukPage />} />
+        <Route path="/profil" element={<ProfilPage />} />
+        <Route path="/chat/:tokoId" element={<ChatPage />} />
+        <Route path="/verifikasi" element={<VerifikasiPage />} />
+        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/pusat-bantuan" element={<PusatBantuan />} />
+        <Route path="/keranjang" element={<KeranjangPage />} />
       </Routes>
-      <Route path="/keranjang" element={<ProtectedRoute><KeranjangPage /></ProtectedRoute>} />
     </>
   )
 }
