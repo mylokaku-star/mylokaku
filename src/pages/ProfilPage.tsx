@@ -11,17 +11,13 @@ export default function ProfilPage() {
   const [saving, setSaving] = useState(false)
   const [formPassword, setFormPassword] = useState({ baru: '', konfirmasi: '' })
   const [savingPassword, setSavingPassword] = useState(false)
-  const [isVerified, setIsVerified] = useState(false)       // KYC centang biru
-  const [isVerifiedWA, setIsVerifiedWA] = useState(false)   // Verifikasi nomor WA
+  const [isVerified, setIsVerified] = useState(false)
+  const [isVerifiedWA, setIsVerifiedWA] = useState(false)
+  const [jumlahKeranjang, setJumlahKeranjang] = useState(0)
+  const [jumlahWishlist, setJumlahWishlist] = useState(0)
   const [form, setForm] = useState({
-    username: '',
-    nama: '',
-    nama_lengkap: '',
-    email: '',
-    jenis_kelamin: '',
-    alamat: '',
-    tanggal_lahir: '',
-    nomor_wa: '',
+    username: '', nama: '', nama_lengkap: '', email: '',
+    jenis_kelamin: '', alamat: '', tanggal_lahir: '', nomor_wa: '',
   })
 
   useEffect(() => { loadProfil() }, [])
@@ -47,19 +43,21 @@ export default function ProfilPage() {
         tanggal_lahir: profileData.tanggal_lahir || '',
         nomor_wa: profileData.nomor_wa || nomorWa,
       })
-
-      // ✅ KYC — dari kolom is_verified
       setIsVerified(profileData.is_verified || false)
-
-      // ✅ WA — dari kolom is_wa_verified (terpisah dari KYC)
       setIsVerifiedWA(profileData.is_wa_verified || false)
     } else {
       setForm(f => ({ ...f, nomor_wa: nomorWa }))
     }
 
-    const { data: tokoData } = await supabase
-      .from('toko').select('*').eq('user_id', userData.user.id).single()
+    const [{ data: tokoData }, { count: keranjangCount }, { count: wishlistCount }] = await Promise.all([
+      supabase.from('toko').select('*').eq('user_id', userData.user.id).single(),
+      supabase.from('keranjang').select('*', { count: 'exact', head: true }).eq('user_id', userData.user.id),
+      supabase.from('wishlist_produk').select('*', { count: 'exact', head: true }).eq('user_id', userData.user.id),
+    ])
+
     setToko(tokoData)
+    setJumlahKeranjang(keranjangCount || 0)
+    setJumlahWishlist(wishlistCount || 0)
     setLoading(false)
   }
 
@@ -114,10 +112,7 @@ export default function ProfilPage() {
     navigate('/login')
   }
 
-  function getInisial() {
-    return (form.nama || form.nama_lengkap || '?').charAt(0).toUpperCase()
-  }
-
+  function getInisial() { return (form.nama || form.nama_lengkap || '?').charAt(0).toUpperCase() }
   function hitungUmur(tanggal: string) {
     if (!tanggal) return null
     return new Date().getFullYear() - new Date(tanggal).getFullYear()
@@ -143,22 +138,16 @@ export default function ProfilPage() {
           </div>
           <div className="flex items-center justify-center gap-2">
             <p className="text-white font-bold text-lg">{form.nama || 'Belum ada nama'}</p>
-            {/* Centang biru hanya muncul kalau KYC verified */}
             {isVerified && (
-              <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:18, height:18, background:'#3b82f6', color:'white', borderRadius:'50%', fontSize:11, fontWeight:'bold' }}>&#10003;</span>
+              <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:18, height:18, background:'#3b82f6', color:'white', borderRadius:'50%', fontSize:11, fontWeight:'bold' }}>✓</span>
             )}
           </div>
           {form.username && <p className="text-green-400 text-sm mt-0.5">@{form.username}</p>}
           <div className="flex items-center justify-center gap-2 mt-1">
             <p className="text-gray-400 text-xs">+{form.nomor_wa}</p>
-            {/* Badge WA hanya muncul kalau WA verified */}
-            {isVerifiedWA && (
-              <span className="text-xs bg-green-700 text-green-200 px-2 py-0.5 rounded-full font-semibold">WA Verified</span>
-            )}
+            {isVerifiedWA && <span className="text-xs bg-green-700 text-green-200 px-2 py-0.5 rounded-full font-semibold">WA Verified</span>}
           </div>
-          {form.tanggal_lahir && (
-            <p className="text-gray-500 text-xs mt-0.5">{hitungUmur(form.tanggal_lahir)} tahun</p>
-          )}
+          {form.tanggal_lahir && <p className="text-gray-500 text-xs mt-0.5">{hitungUmur(form.tanggal_lahir)} tahun</p>}
           <p className="text-gray-500 text-xs mt-0.5">
             Member sejak {new Date(user?.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
@@ -167,18 +156,44 @@ export default function ProfilPage() {
 
       <div className="max-w-lg mx-auto px-4 -mt-6 space-y-4">
 
-        {/* Verifikasi WA Card */}
+        {/* Keranjang & Wishlist */}
+        <div className="grid grid-cols-2 gap-3">
+          <button onClick={() => navigate('/keranjang')}
+            className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-left hover:shadow-md transition relative">
+            {jumlahKeranjang > 0 && (
+              <span className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                {jumlahKeranjang > 9 ? '9+' : jumlahKeranjang}
+              </span>
+            )}
+            <span className="text-2xl mb-2 block">🛒</span>
+            <p className="font-bold text-gray-800 text-sm">Keranjang</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {jumlahKeranjang > 0 ? `${jumlahKeranjang} item siap beli` : 'Belum ada item'}
+            </p>
+          </button>
+          <button onClick={() => navigate('/keranjang')}
+            className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-left hover:shadow-md transition relative">
+            {jumlahWishlist > 0 && (
+              <span className="absolute top-3 right-3 bg-red-400 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                {jumlahWishlist > 9 ? '9+' : jumlahWishlist}
+              </span>
+            )}
+            <span className="text-2xl mb-2 block">🤍</span>
+            <p className="font-bold text-gray-800 text-sm">Wishlist</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {jumlahWishlist > 0 ? `${jumlahWishlist} produk disimpan` : 'Belum ada produk'}
+            </p>
+          </button>
+        </div>
+
+        {/* Verifikasi WA */}
         <div className={`rounded-2xl p-4 border shadow-sm flex items-center justify-between ${isVerifiedWA ? 'bg-green-50 border-green-100' : 'bg-white border-gray-100'}`}>
           <div>
-            <p className="text-sm font-bold text-gray-800">
-              {isVerifiedWA ? 'Nomor WA Terverifikasi' : 'Verifikasi Nomor WA'}
-            </p>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {isVerifiedWA ? 'Nomor WA kamu sudah dikonfirmasi' : 'Konfirmasi kepemilikan nomor WA'}
-            </p>
+            <p className="text-sm font-bold text-gray-800">{isVerifiedWA ? 'Nomor WA Terverifikasi' : 'Verifikasi Nomor WA'}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{isVerifiedWA ? 'Nomor WA kamu sudah dikonfirmasi' : 'Konfirmasi kepemilikan nomor WA'}</p>
           </div>
           {isVerifiedWA ? (
-            <span className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">&#10003;</span>
+            <span className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">✓</span>
           ) : (
             <button onClick={() => navigate('/verifikasi-wa')}
               className="text-xs bg-green-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-green-700 transition flex-shrink-0">
@@ -187,18 +202,14 @@ export default function ProfilPage() {
           )}
         </div>
 
-        {/* Verifikasi KYC Card */}
+        {/* Verifikasi KYC */}
         <div className={`rounded-2xl p-4 border shadow-sm flex items-center justify-between ${isVerified ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-100'}`}>
           <div>
-            <p className="text-sm font-bold text-gray-800">
-              {isVerified ? 'Akun Terverifikasi' : 'Verifikasi Akun (KYC)'}
-            </p>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {isVerified ? 'Centang biru aktif di profilmu' : 'Dapatkan centang biru kepercayaan'}
-            </p>
+            <p className="text-sm font-bold text-gray-800">{isVerified ? 'Akun Terverifikasi' : 'Verifikasi Akun (KYC)'}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{isVerified ? 'Centang biru aktif di profilmu' : 'Dapatkan centang biru kepercayaan'}</p>
           </div>
           {isVerified ? (
-            <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, background:'#3b82f6', color:'white', borderRadius:'50%', fontSize:16, fontWeight:'bold', flexShrink:0 }}>&#10003;</span>
+            <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, background:'#3b82f6', color:'white', borderRadius:'50%', fontSize:16, fontWeight:'bold', flexShrink:0 }}>✓</span>
           ) : (
             <button onClick={() => navigate('/verifikasi')}
               className="text-xs bg-blue-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-blue-700 transition flex-shrink-0">
@@ -210,42 +221,29 @@ export default function ProfilPage() {
         {/* Form Profil */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-4">
           <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Informasi Profil</p>
-
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">
-              Username <span className="text-gray-400 font-normal">(tampil di chat)</span>
-            </label>
+            <label className="text-sm font-semibold text-gray-700 block mb-1.5">Username <span className="text-gray-400 font-normal">(tampil di chat)</span></label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">@</span>
-              <input name="username" value={form.username} onChange={handleChange}
-                placeholder="contoh: budi123"
+              <input name="username" value={form.username} onChange={handleChange} placeholder="contoh: budi123"
                 className="w-full border-2 border-gray-100 rounded-xl pl-8 pr-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
             </div>
           </div>
-
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">
-              Nama Tampilan <span className="text-red-500">*</span>
-            </label>
-            <input name="nama" value={form.nama} onChange={handleChange}
-              placeholder="Nama yang tampil ke pengguna lain"
+            <label className="text-sm font-semibold text-gray-700 block mb-1.5">Nama Tampilan <span className="text-red-500">*</span></label>
+            <input name="nama" value={form.nama} onChange={handleChange} placeholder="Nama yang tampil ke pengguna lain"
               className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
           </div>
-
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">Nama Lengkap</label>
-            <input name="nama_lengkap" value={form.nama_lengkap} onChange={handleChange}
-              placeholder="Nama sesuai KTP"
+            <input name="nama_lengkap" value={form.nama_lengkap} onChange={handleChange} placeholder="Nama sesuai KTP"
               className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
           </div>
-
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">Email</label>
-            <input name="email" type="email" value={form.email} onChange={handleChange}
-              placeholder="contoh@email.com"
+            <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="contoh@email.com"
               className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
           </div>
-
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">Jenis Kelamin</label>
             <div className="grid grid-cols-3 gap-2">
@@ -257,33 +255,23 @@ export default function ProfilPage() {
               ))}
             </div>
           </div>
-
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">
-              Tanggal Lahir
-              {form.tanggal_lahir && <span className="text-gray-400 font-normal ml-2">({hitungUmur(form.tanggal_lahir)} tahun)</span>}
+              Tanggal Lahir {form.tanggal_lahir && <span className="text-gray-400 font-normal ml-2">({hitungUmur(form.tanggal_lahir)} tahun)</span>}
             </label>
             <input name="tanggal_lahir" type="date" value={form.tanggal_lahir} onChange={handleChange}
               max={new Date().toISOString().split('T')[0]}
               className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
           </div>
-
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">Alamat</label>
-            <textarea name="alamat" value={form.alamat} onChange={handleChange}
-              placeholder="Alamat lengkap kamu" rows={2}
+            <textarea name="alamat" value={form.alamat} onChange={handleChange} placeholder="Alamat lengkap kamu" rows={2}
               className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition resize-none" />
           </div>
-
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">
-              Nomor WhatsApp <span className="text-gray-400 font-normal">(tidak bisa diubah)</span>
-            </label>
-            <div className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm bg-gray-100 text-gray-500">
-              +{form.nomor_wa}
-            </div>
+            <label className="text-sm font-semibold text-gray-700 block mb-1.5">Nomor WhatsApp <span className="text-gray-400 font-normal">(tidak bisa diubah)</span></label>
+            <div className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm bg-gray-100 text-gray-500">+{form.nomor_wa}</div>
           </div>
-
           <button onClick={handleSimpanProfil} disabled={saving}
             className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl py-3.5 text-sm font-bold transition shadow-sm disabled:opacity-50">
             {saving ? 'Menyimpan...' : 'Simpan Profil'}
@@ -309,7 +297,7 @@ export default function ProfilPage() {
               </div>
               <button onClick={() => navigate('/dashboard')}
                 className="w-full border-2 border-gray-100 text-gray-600 text-sm py-2.5 rounded-xl font-semibold hover:bg-gray-50 transition">
-                Kelola {toko.jenis === 'jasa' ? 'Jasa' : toko.jenis === 'preloved' ? 'Preloved' : 'Toko'} &rarr;
+                Kelola {toko.jenis === 'jasa' ? 'Jasa' : toko.jenis === 'preloved' ? 'Preloved' : 'Toko'} →
               </button>
             </div>
           </div>
@@ -321,15 +309,13 @@ export default function ProfilPage() {
           <div className="space-y-3">
             <div>
               <label className="text-sm font-semibold text-gray-700 block mb-1.5">Kata Sandi Baru</label>
-              <input type="password" value={formPassword.baru}
-                onChange={e => setFormPassword(f => ({ ...f, baru: e.target.value }))}
+              <input type="password" value={formPassword.baru} onChange={e => setFormPassword(f => ({ ...f, baru: e.target.value }))}
                 placeholder="Minimal 6 karakter"
                 className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
             </div>
             <div>
               <label className="text-sm font-semibold text-gray-700 block mb-1.5">Konfirmasi Kata Sandi</label>
-              <input type="password" value={formPassword.konfirmasi}
-                onChange={e => setFormPassword(f => ({ ...f, konfirmasi: e.target.value }))}
+              <input type="password" value={formPassword.konfirmasi} onChange={e => setFormPassword(f => ({ ...f, konfirmasi: e.target.value }))}
                 placeholder="Ulangi kata sandi baru"
                 className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
             </div>
@@ -353,23 +339,22 @@ export default function ProfilPage() {
       {/* Bottom nav */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex shadow-lg">
         <button onClick={() => navigate('/cari')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
-          <span className="text-lg">&#128269;</span>
+          <span className="text-lg">🔍</span>
           <span className="text-xs font-medium text-gray-400">Cari</span>
         </button>
         <button onClick={() => navigate('/peta')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
-          <span className="text-lg">&#128506;</span>
+          <span className="text-lg">🗺️</span>
           <span className="text-xs font-medium text-gray-400">Peta</span>
         </button>
         <button onClick={() => navigate('/dashboard')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
-          <span className="text-lg">&#127978;</span>
+          <span className="text-lg">🏪</span>
           <span className="text-xs font-medium text-gray-400">Toko</span>
         </button>
         <button onClick={() => navigate('/profil')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
-          <span className="text-lg">&#128100;</span>
+          <span className="text-lg">👤</span>
           <span className="text-xs font-bold text-red-600">Profil</span>
         </button>
       </div>
-
     </div>
   )
 }

@@ -22,6 +22,7 @@ import PusatBantuan from './pages/PusatBantuan'
 import VerifikasiWA from './pages/VerifikasiWA'
 import BuatPromoPage from './pages/BuatPromoPage'
 import DetailPromoPage from './pages/DetailPromoPage'
+import KeranjangPage from './pages/KeranjangPage'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -63,6 +64,7 @@ function App() {
         <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
         <Route path="/pusat-bantuan" element={<ProtectedRoute><PusatBantuan /></ProtectedRoute>} />
       </Routes>
+      <Route path="/keranjang" element={<ProtectedRoute><KeranjangPage /></ProtectedRoute>} />
     </>
   )
 }
