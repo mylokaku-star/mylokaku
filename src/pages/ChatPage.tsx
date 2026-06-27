@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
+import { daftarkanPushNotification, cekStatusPush } from '../lib/pushNotification'
 
 export default function ChatPage() {
   const { tokoId } = useParams()
@@ -14,6 +15,7 @@ export default function ChatPage() {
   const [user, setUser] = useState<any>(null)
   const [isPenjual, setIsPenjual] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [pushAktif, setPushAktif] = useState(false)
   const [pembeliList, setPembeliList] = useState<any[]>([])
   const [selectedPembeli, setSelectedPembeli] = useState<string | null>(null)
   const [profileMap, setProfileMap] = useState<Record<string, any>>({})
@@ -134,6 +136,17 @@ export default function ChatPage() {
 
       setLoading(false)
       setupRealtime(userData.user.id, penjual)
+
+      // Kalau penjual, cek dan daftarkan push notification otomatis
+      if (penjual) {
+        const sudahAktif = await cekStatusPush()
+        setPushAktif(sudahAktif)
+        if (!sudahAktif) {
+          const berhasil = await daftarkanPushNotification()
+          setPushAktif(berhasil)
+          if (berhasil) toast.success('Notifikasi pesan masuk diaktifkan! 🔔')
+        }
+      }
     }
 
     loadData()
@@ -149,13 +162,30 @@ export default function ChatPage() {
   async function kirimPesan() {
     if (!input.trim()) return
     const pembeliId = isPenjual ? selectedPembeli : user.id
+    const isiPesan = input.trim()
     const { error } = await supabase.from('pesan').insert({
       toko_id: tokoId, pengirim_id: user.id, pengirim_email: user.email,
-      pembeli_id: pembeliId, isi: input.trim(),
+      pembeli_id: pembeliId, isi: isiPesan,
       is_penjual: isPenjual, is_read: isPenjual,
     })
     if (error) { toast.error('Gagal kirim pesan') }
-    else { setInput('') }
+    else {
+      setInput('')
+      // Kalau pembeli yang kirim, trigger push ke penjual
+      if (!isPenjual) {
+        fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-push-notification`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({ toko_id: tokoId, isi_pesan: isiPesan }),
+          }
+        ).catch(() => {}) // fire and forget, jangan block UI
+      }
+    }
   }
 
   function formatWaktu(timestamp: string) {

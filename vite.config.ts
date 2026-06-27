@@ -8,8 +8,16 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      // Ganti ke injectManifest agar bisa pakai custom sw.js yang support push notification
+      strategies: 'injectManifest',
+      srcDir: 'public',
+      filename: 'sw.js',
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      injectManifest: {
+        // Sama seperti workbox.globPatterns sebelumnya
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+      },
       manifest: {
         name: 'Lokaku — Temukan Kebutuhan Sekitar',
         short_name: 'Lokaku',
@@ -64,24 +72,10 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-cache',
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24, // 24 jam
-              },
-            },
-          },
-        ],
-      },
+      // runtimeCaching dipindah ke dalam sw.js (workbox.runtimeCaching tidak berlaku di injectManifest)
       devOptions: {
-        enabled: true, // aktifkan PWA saat development
+        enabled: true,
+        type: 'module', // diperlukan untuk injectManifest mode
       },
     }),
   ],
