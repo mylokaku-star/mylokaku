@@ -169,6 +169,7 @@ export default function ChatPage() {
     else {
       setInput('')
       // Kalau pembeli yang kirim, trigger push ke penjual
+      console.log('[Chat] isPenjual:', isPenjual, 'tokoId:', tokoId, 'userId:', user?.id)
       if (!isPenjual) {
         fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-push-notification`,
