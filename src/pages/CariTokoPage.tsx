@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { KATEGORI_TOKO, KATEGORI_JASA, KATEGORI_PRELOVED } from '../lib/kategori'
@@ -16,7 +16,7 @@ function formatHarga(harga: number) { return new Intl.NumberFormat('id-ID', { st
 
 type JenisFilter = 'semua' | 'toko' | 'jasa' | 'preloved' | 'favorit'
 
-const JENIS_CONFIG = {
+const JENIS_CONFIG: Record<JenisFilter, { icon: string; label: string; activeBg: string }> = {
   semua:    { icon: '🏠', label: 'Semua',    activeBg: 'bg-green-600 text-white border-green-600' },
   toko:     { icon: '🏪', label: 'Toko',     activeBg: 'bg-green-600 text-white border-green-600' },
   jasa:     { icon: '🛠️', label: 'Jasa',     activeBg: 'bg-blue-600 text-white border-blue-600' },
@@ -49,13 +49,17 @@ function getJenisInfo(t: any) {
 }
 
 function getIconKategori(jenis: JenisFilter, contohToko?: any) {
-  if (jenis !== 'semua' && jenis !== 'favorit') return JENIS_CONFIG[jenis as keyof typeof JENIS_CONFIG].icon
+  if (jenis !== 'semua' && jenis !== 'favorit') return JENIS_CONFIG[jenis].icon
   if (contohToko?.jenis === 'jasa') return '🛠️'
   if (contohToko?.jenis === 'preloved') return '♻️'
   return '🏪'
 }
 
-function TokoCard({ t, userLat, userLng, onDetail, onChat, isFollowed, onToggleFollow }: any) {
+function TokoCard({ t, userLat, userLng, onDetail, onChat, isFollowed, onToggleFollow }: {
+  t: any; userLat: number | null; userLng: number | null
+  onDetail: (id: string) => void; onChat: (id: string) => void
+  isFollowed: boolean; onToggleFollow: ((id: string) => void) | null
+}) {
   const info = getJenisInfo(t)
   const jarak = userLat && userLng && t.lat && t.lng ? hitungJarak(userLat, userLng, t.lat, t.lng) : null
   return (
@@ -88,7 +92,7 @@ function TokoCard({ t, userLat, userLng, onDetail, onChat, isFollowed, onToggleF
       </div>
       <div style={{ padding: '0 10px 10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
         <button onClick={() => onDetail(t.id)} style={{ ...info.primaryBtnStyle, fontSize: '11px', padding: '7px 0', borderRadius: '10px', fontWeight: 700, border: 'none', cursor: 'pointer', textAlign: 'center' }}>
-          {t.jenis === 'jasa' ? 'Detail' : t.jenis === 'preloved' ? 'Toko' : 'Toko'}
+          {t.jenis === 'jasa' ? 'Detail' : 'Toko'}
         </button>
         <button onClick={() => onChat(t.id)} style={{ ...info.secondaryBtnStyle, fontSize: '11px', padding: '7px 0', borderRadius: '10px', fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
           Chat 💬
@@ -98,7 +102,11 @@ function TokoCard({ t, userLat, userLng, onDetail, onChat, isFollowed, onToggleF
   )
 }
 
-function ProdukCard({ p, userLat, userLng, onDetail, onChat, isWishlisted, onToggleWishlist }: any) {
+function ProdukCard({ p, userLat, userLng, onDetail, onChat, isWishlisted, onToggleWishlist }: {
+  p: any; userLat: number | null; userLng: number | null
+  onDetail: (id: string) => void; onChat: (id: string) => void
+  isWishlisted: boolean; onToggleWishlist: ((produkId: string, tokoId: string) => void) | null
+}) {
   const jarak = userLat && userLng && p.toko?.lat && p.toko?.lng ? hitungJarak(userLat, userLng, p.toko.lat, p.toko.lng) : null
   return (
     <div style={{ width: '160px', flexShrink: 0, background: 'white', borderRadius: '16px', border: '1px solid #f1f5f9', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -129,7 +137,9 @@ function ProdukCard({ p, userLat, userLng, onDetail, onChat, isWishlisted, onTog
   )
 }
 
-function ScrollStrip({ children, title, icon, count }: any) {
+function ScrollStrip({ children, title, icon, count }: {
+  children: React.ReactNode; title: string; icon: string; count: number
+}) {
   return (
     <section style={{ marginBottom: '8px' }}>
       <div style={{ padding: '0 16px', marginBottom: '8px' }}>
@@ -181,8 +191,6 @@ export default function CariTokoPage() {
   const [sortByJarak, setSortByJarak] = useState(false)
   const [showKategori, setShowKategori] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
-
-  // Favorit & Wishlist
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set())
   const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set())
   const [tokoFavorit, setTokoFavorit] = useState<any[]>([])
@@ -209,14 +217,12 @@ export default function CariTokoPage() {
       supabase.from('produk').select('id, nama, harga, deskripsi, foto_url, kategori, toko_id, toko:toko_id(id, nama, lat, lng, alamat, is_buka, jenis)').order('created_at', { ascending: false }),
     ])
 
+    const allToko = tokoData || []
     const produkAktif = (produkData || []).filter((p: any) => p.toko?.jenis === 'preloved' && p.toko?.is_buka === true)
-    setToko(tokoData || [])
+    setToko(allToko)
     setProdukPreloved(produkAktif)
 
-    if (uid) {
-      await loadFavorit(uid, tokoData || [], produkAktif)
-    }
-
+    if (uid) await loadFavorit(uid, allToko, produkAktif)
     setLoading(false)
   }
 
@@ -225,14 +231,12 @@ export default function CariTokoPage() {
       supabase.from('langganan_toko').select('toko_id').eq('user_id', uid),
       supabase.from('wishlist_produk').select('produk_id').eq('user_id', uid),
     ])
-
-    const fids = new Set((followData || []).map((f: any) => f.toko_id))
-    const wids = new Set((wishData || []).map((w: any) => w.produk_id))
+    const fids = new Set((followData || []).map((f: any) => f.toko_id as string))
+    const wids = new Set((wishData || []).map((w: any) => w.produk_id as string))
     setFollowedIds(fids)
     setWishlistIds(wids)
-
-    setTokoFavorit(allToko.filter(t => fids.has(t.id)))
-    setProdukWishlist(allProduk.filter(p => wids.has(p.id)))
+    setTokoFavorit(allToko.filter((t: any) => fids.has(t.id)))
+    setProdukWishlist(allProduk.filter((p: any) => wids.has(p.id)))
   }
 
   async function toggleFollow(tokoId: string) {
@@ -241,12 +245,12 @@ export default function CariTokoPage() {
       await supabase.from('langganan_toko').delete().eq('user_id', userId).eq('toko_id', tokoId)
       const next = new Set(followedIds); next.delete(tokoId)
       setFollowedIds(next)
-      setTokoFavorit(prev => prev.filter(t => t.id !== tokoId))
+      setTokoFavorit(prev => prev.filter((t: any) => t.id !== tokoId))
     } else {
       await supabase.from('langganan_toko').insert({ user_id: userId, toko_id: tokoId })
       const next = new Set(followedIds); next.add(tokoId)
       setFollowedIds(next)
-      const t = toko.find(t => t.id === tokoId)
+      const t = toko.find((t: any) => t.id === tokoId)
       if (t) setTokoFavorit(prev => [...prev, t])
     }
   }
@@ -257,48 +261,49 @@ export default function CariTokoPage() {
       await supabase.from('wishlist_produk').delete().eq('user_id', userId).eq('produk_id', produkId)
       const next = new Set(wishlistIds); next.delete(produkId)
       setWishlistIds(next)
-      setProdukWishlist(prev => prev.filter(p => p.id !== produkId))
+      setProdukWishlist(prev => prev.filter((p: any) => p.id !== produkId))
     } else {
       await supabase.from('wishlist_produk').insert({ user_id: userId, produk_id: produkId, toko_id: tokoId })
       const next = new Set(wishlistIds); next.add(produkId)
       setWishlistIds(next)
-      const p = produkPreloved.find(p => p.id === produkId)
+      const p = produkPreloved.find((p: any) => p.id === produkId)
       if (p) setProdukWishlist(prev => [...prev, p])
     }
   }
 
   function filter() {
     let hasilToko = [...toko]
-    if (jenis === 'toko') hasilToko = hasilToko.filter(t => !t.jenis || t.jenis === 'toko')
-    else if (jenis === 'jasa') hasilToko = hasilToko.filter(t => t.jenis === 'jasa')
+    if (jenis === 'toko') hasilToko = hasilToko.filter((t: any) => !t.jenis || t.jenis === 'toko')
+    else if (jenis === 'jasa') hasilToko = hasilToko.filter((t: any) => t.jenis === 'jasa')
     else if (jenis === 'preloved' || jenis === 'favorit') hasilToko = []
-    else hasilToko = hasilToko.filter(t => t.jenis !== 'preloved')
+    else hasilToko = hasilToko.filter((t: any) => t.jenis !== 'preloved')
     if (search && jenis !== 'preloved' && jenis !== 'favorit')
-      hasilToko = hasilToko.filter(t => t.nama?.toLowerCase().includes(search.toLowerCase()) || t.kategori?.toLowerCase().includes(search.toLowerCase()))
-    if (kategori && jenis !== 'preloved' && jenis !== 'favorit') hasilToko = hasilToko.filter(t => t.kategori === kategori)
+      hasilToko = hasilToko.filter((t: any) => t.nama?.toLowerCase().includes(search.toLowerCase()) || t.kategori?.toLowerCase().includes(search.toLowerCase()))
+    if (kategori && jenis !== 'preloved' && jenis !== 'favorit')
+      hasilToko = hasilToko.filter((t: any) => t.kategori === kategori)
     if (sortByJarak && userLat && userLng && jenis !== 'preloved' && jenis !== 'favorit')
-      hasilToko = hasilToko.map(t => ({ ...t, jarak: t.lat && t.lng ? hitungJarak(userLat, userLng, t.lat, t.lng) : 9999 })).sort((a, b) => a.jarak - b.jarak)
+      hasilToko = hasilToko.map((t: any) => ({ ...t, jarak: t.lat && t.lng ? hitungJarak(userLat, userLng, t.lat, t.lng) : 9999 })).sort((a: any, b: any) => a.jarak - b.jarak)
     setFiltered(hasilToko)
 
     let hasilProduk = [...produkPreloved]
     if (jenis !== 'preloved' && jenis !== 'semua' && jenis !== 'favorit') hasilProduk = []
     if (search && (jenis === 'preloved' || jenis === 'semua'))
-      hasilProduk = hasilProduk.filter(p => p.nama?.toLowerCase().includes(search.toLowerCase()) || p.toko?.nama?.toLowerCase().includes(search.toLowerCase()))
-    if (kategori && (jenis === 'preloved' || jenis === 'semua')) hasilProduk = hasilProduk.filter(p => p.kategori === kategori)
+      hasilProduk = hasilProduk.filter((p: any) => p.nama?.toLowerCase().includes(search.toLowerCase()) || p.toko?.nama?.toLowerCase().includes(search.toLowerCase()))
+    if (kategori && (jenis === 'preloved' || jenis === 'semua'))
+      hasilProduk = hasilProduk.filter((p: any) => p.kategori === kategori)
     if (sortByJarak && userLat && userLng && (jenis === 'preloved' || jenis === 'semua'))
-      hasilProduk = hasilProduk.map(p => ({ ...p, jarak: p.toko?.lat && p.toko?.lng ? hitungJarak(userLat, userLng, p.toko.lat, p.toko.lng) : 9999 })).sort((a, b) => a.jarak - b.jarak)
+      hasilProduk = hasilProduk.map((p: any) => ({ ...p, jarak: p.toko?.lat && p.toko?.lng ? hitungJarak(userLat, userLng, p.toko.lat, p.toko.lng) : 9999 })).sort((a: any, b: any) => a.jarak - b.jarak)
     setFilteredProduk(hasilProduk)
   }
 
-  const filteredGrouped = filtered.reduce((g, t) => { const k = t.kategori || 'Lainnya'; if (!g[k]) g[k] = []; g[k].push(t); return g }, {} as Record<string, any[]>)
-  const produkGrouped = filteredProduk.reduce((g, p) => { const k = p.kategori || 'Lainnya'; if (!g[k]) g[k] = []; g[k].push(p); return g }, {} as Record<string, any[]>)
+  const filteredGrouped = filtered.reduce((g: Record<string, any[]>, t: any) => { const k = t.kategori || 'Lainnya'; if (!g[k]) g[k] = []; g[k].push(t); return g }, {})
+  const produkGrouped = filteredProduk.reduce((g: Record<string, any[]>, p: any) => { const k = p.kategori || 'Lainnya'; if (!g[k]) g[k] = []; g[k].push(p); return g }, {})
 
   const masterKategoriList = jenis === 'jasa' ? KATEGORI_JASA : jenis === 'toko' ? KATEGORI_TOKO : jenis === 'preloved' ? KATEGORI_PRELOVED : [...KATEGORI_TOKO, ...KATEGORI_JASA, ...KATEGORI_PRELOVED]
   const masterKategoriFlat = masterKategoriList.flatMap(g => g.items)
   const sortedTokoKeys = [...masterKategoriFlat.filter(k => filteredGrouped[k]), ...Object.keys(filteredGrouped).filter(k => !masterKategoriFlat.includes(k))]
   const kategoriPreloved = KATEGORI_PRELOVED.flatMap(g => g.items)
   const sortedProdukKeys = [...kategoriPreloved.filter(k => produkGrouped[k]), ...Object.keys(produkGrouped).filter(k => !kategoriPreloved.includes(k))]
-
   const grupList = jenis === 'jasa' ? KATEGORI_JASA : jenis === 'toko' ? KATEGORI_TOKO : jenis === 'preloved' ? KATEGORI_PRELOVED : [...KATEGORI_TOKO, ...KATEGORI_JASA, ...KATEGORI_PRELOVED]
   const adaHasil = jenis === 'preloved' ? filteredProduk.length > 0 : jenis === 'semua' ? filtered.length > 0 || filteredProduk.length > 0 : filtered.length > 0
   const adaFavorit = tokoFavorit.length > 0 || produkWishlist.length > 0
@@ -333,9 +338,8 @@ export default function CariTokoPage() {
           </div>
         )}
 
-        {/* Tab Filter */}
         <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', overflowX: 'auto', paddingBottom: '4px', msOverflowStyle: 'none' as any, scrollbarWidth: 'none' as any }}>
-          {(Object.entries(JENIS_CONFIG) as [JenisFilter, any][]).map(([j, cfg]) => (
+          {(Object.entries(JENIS_CONFIG) as [JenisFilter, typeof JENIS_CONFIG.semua][]).map(([j, cfg]) => (
             <button key={j} onClick={() => setJenis(j)}
               className={`flex items-center gap-1 text-xs px-3 py-2 rounded-xl border-2 font-bold transition flex-shrink-0 ${jenis === j ? cfg.activeBg : 'bg-white text-gray-500 border-gray-100'}`}>
               {cfg.icon} {cfg.label}
@@ -386,18 +390,20 @@ export default function CariTokoPage() {
               <>
                 {tokoFavorit.length > 0 && (
                   <ScrollStrip title="Toko & Jasa Langganan" icon="🏪" count={tokoFavorit.length}>
-                    {tokoFavorit.map(t => (
+                    {tokoFavorit.map((t: any) => (
                       <TokoCard key={t.id} t={t} userLat={userLat} userLng={userLng}
-                        onDetail={id => navigate(`/toko/${id}`)} onChat={id => navigate(`/chat/${id}`)}
+                        onDetail={(id: string) => navigate(`/toko/${id}`)}
+                        onChat={(id: string) => navigate(`/chat/${id}`)}
                         isFollowed={followedIds.has(t.id)} onToggleFollow={toggleFollow} />
                     ))}
                   </ScrollStrip>
                 )}
                 {produkWishlist.length > 0 && (
                   <ScrollStrip title="Produk Wishlist" icon="🛍️" count={produkWishlist.length}>
-                    {produkWishlist.map(p => (
+                    {produkWishlist.map((p: any) => (
                       <ProdukCard key={p.id} p={p} userLat={userLat} userLng={userLng}
-                        onDetail={id => navigate(`/toko/${id}`)} onChat={id => navigate(`/chat/${id}`)}
+                        onDetail={(id: string) => navigate(`/toko/${id}`)}
+                        onChat={(id: string) => navigate(`/chat/${id}`)}
                         isWishlisted={wishlistIds.has(p.id)} onToggleWishlist={toggleWishlist} />
                     ))}
                   </ScrollStrip>
@@ -419,7 +425,7 @@ export default function CariTokoPage() {
 
             <p className="text-xs text-gray-400 font-medium px-4">
               {loading ? 'Memuat...' : jenis === 'semua'
-                ? `${toko.filter(t => t.jenis !== 'preloved').length} toko/jasa · ${produkPreloved.length} barang preloved`
+                ? `${toko.filter((t: any) => t.jenis !== 'preloved').length} toko/jasa · ${produkPreloved.length} barang preloved`
                 : jenis === 'preloved' ? `${filteredProduk.length} barang preloved`
                 : `${filtered.length} ${JENIS_CONFIG[jenis].label.toLowerCase()} aktif`}
             </p>
@@ -436,22 +442,23 @@ export default function CariTokoPage() {
               <>
                 {jenis !== 'preloved' && sortedTokoKeys.map(namaKategori => (
                   <ScrollStrip key={namaKategori} title={namaKategori} icon={getIconKategori(jenis, filteredGrouped[namaKategori]?.[0])} count={filteredGrouped[namaKategori].length}>
-                    {filteredGrouped[namaKategori].map(t => (
+                    {filteredGrouped[namaKategori].map((t: any) => (
                       <TokoCard key={t.id} t={t} userLat={userLat} userLng={userLng}
-                        onDetail={id => navigate(`/toko/${id}`)} onChat={id => navigate(`/chat/${id}`)}
+                        onDetail={(id: string) => navigate(`/toko/${id}`)}
+                        onChat={(id: string) => navigate(`/chat/${id}`)}
                         isFollowed={followedIds.has(t.id)} onToggleFollow={userId ? toggleFollow : null} />
                     ))}
                   </ScrollStrip>
                 ))}
-
                 {(jenis === 'preloved' || jenis === 'semua') && sortedProdukKeys.length > 0 && (
                   <>
                     {jenis === 'semua' && <div className="px-4"><p className="text-sm font-extrabold text-purple-700">♻️ Barang Preloved</p></div>}
                     {sortedProdukKeys.map(namaKategori => (
                       <ScrollStrip key={namaKategori} title={namaKategori} icon="♻️" count={produkGrouped[namaKategori].length}>
-                        {produkGrouped[namaKategori].map(p => (
+                        {produkGrouped[namaKategori].map((p: any) => (
                           <ProdukCard key={p.id} p={p} userLat={userLat} userLng={userLng}
-                            onDetail={id => navigate(`/toko/${id}`)} onChat={id => navigate(`/chat/${id}`)}
+                            onDetail={(id: string) => navigate(`/toko/${id}`)}
+                            onChat={(id: string) => navigate(`/chat/${id}`)}
                             isWishlisted={wishlistIds.has(p.id)} onToggleWishlist={userId ? toggleWishlist : null} />
                         ))}
                       </ScrollStrip>
