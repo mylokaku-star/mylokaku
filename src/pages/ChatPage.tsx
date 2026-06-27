@@ -15,7 +15,6 @@ export default function ChatPage() {
   const [user, setUser] = useState<any>(null)
   const [isPenjual, setIsPenjual] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [pushAktif, setPushAktif] = useState(false)
   const [pembeliList, setPembeliList] = useState<any[]>([])
   const [selectedPembeli, setSelectedPembeli] = useState<string | null>(null)
   const [profileMap, setProfileMap] = useState<Record<string, any>>({})
@@ -137,13 +136,11 @@ export default function ChatPage() {
       setLoading(false)
       setupRealtime(userData.user.id, penjual)
 
-      // Kalau penjual, cek dan daftarkan push notification otomatis
+      // Kalau penjual, daftarkan push notification otomatis
       if (penjual) {
         const sudahAktif = await cekStatusPush()
-        setPushAktif(sudahAktif)
         if (!sudahAktif) {
           const berhasil = await daftarkanPushNotification()
-          setPushAktif(berhasil)
           if (berhasil) toast.success('Notifikasi pesan masuk diaktifkan! 🔔')
         }
       }
