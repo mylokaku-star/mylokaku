@@ -168,20 +168,13 @@ export default function ChatPage() {
     if (error) { toast.error('Gagal kirim pesan') }
     else {
       setInput('')
-      // Kalau pembeli yang kirim, trigger push ke penjual
-      console.log('[Chat] isPenjual:', isPenjual, 'tokoId:', tokoId, 'userId:', user?.id)
+      // Trigger push notification via supabase.functions.invoke (handle CORS otomatis)
       if (!isPenjual) {
-        fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-push-notification`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            },
-            body: JSON.stringify({ toko_id: tokoId, isi_pesan: isiPesan }),
-          }
-        ).catch(() => {}) // fire and forget, jangan block UI
+        supabase.functions.invoke('send-push-notification', {
+          body: { toko_id: tokoId, isi_pesan: isiPesan },
+        }).then(({ error }) => {
+          if (error) console.error('Push notification error:', error)
+        })
       }
     }
   }
