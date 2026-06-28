@@ -20,7 +20,6 @@ import PusatBantuan from './pages/PusatBantuan'
 import VerifikasiWA from './pages/VerifikasiWA'
 import BuatPromoPage from './pages/BuatPromoPage'
 import KeranjangPage from './pages/KeranjangPage'
-import ChatListPenjualPage from './pages/ChatListPenjualPage' // Pastikan file ini ada
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -45,11 +44,13 @@ function App() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/buat-toko" element={<BuatTokoPage />} />
         
-        {/* Rute Dinamis dengan :id */}
+        {/* Rute Dinamis */}
         <Route path="/buat-promo/:id" element={<BuatPromoPage />} />
         <Route path="/edit-toko/:id" element={<EditTokoPage />} />
         <Route path="/kelola-produk/:id" element={<ProdukPage />} />
-        <Route path="/chat-list-penjual/:id" element={<ChatListPenjualPage />} />
+        
+        {/* Menggunakan ChatPage untuk list chat penjual */}
+        <Route path="/chat-list-penjual/:id" element={<ChatPage />} />
         
         <Route path="/tambah-produk" element={<TambahProdukPage />} />
         <Route path="/profil" element={<ProfilPage />} />
