@@ -119,242 +119,287 @@ export default function ProfilPage() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-700 rounded-2xl flex items-center justify-center text-white font-black text-xl mx-auto mb-3 animate-pulse">L</div>
-        <p className="text-gray-400 text-sm">Memuat profil...</p>
-      </div>
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center">
+      <div className="w-14 h-14 bg-gradient-to-tr from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-green-500/20 animate-bounce">L</div>
+      <p className="text-emerald-800 font-bold text-xs mt-3 tracking-wide animate-pulse">Menghubungkan Akun...</p>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
+    <div className="min-h-screen bg-[#F8FAFC] pb-28 text-gray-800 antialiased">
 
-      {/* Header */}
-      <div className="bg-gradient-to-br from-gray-800 to-gray-900 px-4 pt-8 pb-14">
-        <div className="max-w-lg mx-auto text-center">
-          <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white text-3xl font-black mx-auto mb-3 shadow-lg">
-            {getInisial()}
-          </div>
-          <div className="flex items-center justify-center gap-2">
-            <p className="text-white font-bold text-lg">{form.nama || 'Belum ada nama'}</p>
+      {/* Modern Gradient & Glassmorphism Header */}
+      <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 px-4 pt-10 pb-20 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.12),transparent_45%)]"></div>
+        <div className="max-w-md mx-auto text-center relative z-10">
+          
+          <div className="relative inline-block mb-4">
+            <div className="w-24 h-24 bg-gradient-to-tr from-emerald-400 to-teal-500 rounded-full flex items-center justify-center text-white text-4xl font-black shadow-xl ring-4 ring-white/10 mx-auto">
+              {getInisial()}
+            </div>
             {isVerified && (
-              <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:18, height:18, background:'#3b82f6', color:'white', borderRadius:'50%', fontSize:11, fontWeight:'bold' }}>✓</span>
+              <span className="absolute bottom-1 right-1 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center border-2 border-slate-900 text-xs shadow-md font-bold">✓</span>
             )}
           </div>
-          {form.username && <p className="text-green-400 text-sm mt-0.5">@{form.username}</p>}
-          <div className="flex items-center justify-center gap-2 mt-1">
-            <p className="text-gray-400 text-xs">+{form.nomor_wa}</p>
-            {isVerifiedWA && <span className="text-xs bg-green-700 text-green-200 px-2 py-0.5 rounded-full font-semibold">WA Verified</span>}
+
+          <h2 className="text-white font-extrabold text-xl tracking-tight">{form.nama || 'Pengguna Baru'}</h2>
+          
+          {form.username && (
+            <span className="inline-block mt-1 bg-emerald-500/10 text-emerald-400 text-xs px-3 py-1 rounded-full font-semibold border border-emerald-500/20">
+              @{form.username}
+            </span>
+          )}
+
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-xs text-slate-400 font-medium">
+            <span className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-md border border-white/5">
+              📱 +{form.nomor_wa}
+            </span>
+            {form.tanggal_lahir && (
+              <span className="bg-white/5 px-2 py-1 rounded-md border border-white/5">
+                🎂 {hitungUmur(form.tanggal_lahir)} Tahun
+              </span>
+            )}
           </div>
-          {form.tanggal_lahir && <p className="text-gray-500 text-xs mt-0.5">{hitungUmur(form.tanggal_lahir)} tahun</p>}
-          <p className="text-gray-500 text-xs mt-0.5">
-            Member sejak {new Date(user?.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+
+          <p className="text-[11px] text-slate-500 font-medium mt-3 uppercase tracking-wider">
+            Bergabung · {new Date(user?.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 -mt-6 space-y-4">
+      <div className="max-w-md mx-auto px-4 -mt-10 space-y-4 relative z-20">
 
-        {/* Keranjang & Wishlist */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* Counter Stats Grid: Keranjang & Wishlist */}
+        <div className="grid grid-cols-2 gap-3.5">
           <button onClick={() => navigate('/keranjang')}
-            className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-left hover:shadow-md transition relative">
+            className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 text-left active:scale-95 transition-all relative group overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
             {jumlahKeranjang > 0 && (
-              <span className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+              <span className="absolute top-4 right-4 bg-red-500 text-white text-[10px] font-black px-1.5 h-4.5 min-w-[18px] rounded-full flex items-center justify-center shadow-sm">
                 {jumlahKeranjang > 9 ? '9+' : jumlahKeranjang}
               </span>
             )}
-            <span className="text-2xl mb-2 block">🛒</span>
-            <p className="font-bold text-gray-800 text-sm">Keranjang</p>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {jumlahKeranjang > 0 ? `${jumlahKeranjang} item siap beli` : 'Belum ada item'}
+            <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-xl mb-3 shadow-inner">🛒</div>
+            <p className="font-extrabold text-slate-800 text-sm">Keranjang</p>
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+              {jumlahKeranjang > 0 ? `${jumlahKeranjang} item siap bayar` : 'Belum ada item'}
             </p>
           </button>
+
           <button onClick={() => navigate('/keranjang')}
-            className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-left hover:shadow-md transition relative">
+            className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 text-left active:scale-95 transition-all relative group overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-rose-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
             {jumlahWishlist > 0 && (
-              <span className="absolute top-3 right-3 bg-red-400 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+              <span className="absolute top-4 right-4 bg-rose-400 text-white text-[10px] font-black px-1.5 h-4.5 min-w-[18px] rounded-full flex items-center justify-center shadow-sm">
                 {jumlahWishlist > 9 ? '9+' : jumlahWishlist}
               </span>
             )}
-            <span className="text-2xl mb-2 block">🤍</span>
-            <p className="font-bold text-gray-800 text-sm">Wishlist</p>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {jumlahWishlist > 0 ? `${jumlahWishlist} produk disimpan` : 'Belum ada produk'}
+            <div className="w-10 h-10 bg-rose-50 rounded-xl flex items-center justify-center text-xl mb-3 shadow-inner">🤍</div>
+            <p className="font-extrabold text-slate-800 text-sm">Wishlist</p>
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+              {jumlahWishlist > 0 ? `${jumlahWishlist} produk disimpan` : 'Belum ada favorit'}
             </p>
           </button>
         </div>
 
-        {/* Verifikasi WA */}
-        <div className={`rounded-2xl p-4 border shadow-sm flex items-center justify-between ${isVerifiedWA ? 'bg-green-50 border-green-100' : 'bg-white border-gray-100'}`}>
-          <div>
-            <p className="text-sm font-bold text-gray-800">{isVerifiedWA ? 'Nomor WA Terverifikasi' : 'Verifikasi Nomor WA'}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{isVerifiedWA ? 'Nomor WA kamu sudah dikonfirmasi' : 'Konfirmasi kepemilikan nomor WA'}</p>
+        {/* Verification Center Badges */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-1 divide-y divide-slate-50 shadow-sm">
+          {/* WA Verification Bar */}
+          <div className="p-3.5 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${isVerifiedWA ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'}`}>💬</div>
+              <div>
+                <p className="text-xs font-bold text-slate-800">{isVerifiedWA ? 'WhatsApp Terverifikasi' : 'Verifikasi Nomor WA'}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">{isVerifiedWA ? 'Akses chat instan aktif' : 'Konfirmasi kontak aktif kamu'}</p>
+              </div>
+            </div>
+            {isVerifiedWA ? (
+              <span className="text-[10px] bg-emerald-100 text-emerald-700 font-black px-2.5 py-1 rounded-md">AKTIF</span>
+            ) : (
+              <button onClick={() => navigate('/verifikasi-wa')}
+                className="text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm transition active:scale-95">
+                Konfirmasi
+              </button>
+            )}
           </div>
-          {isVerifiedWA ? (
-            <span className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">✓</span>
-          ) : (
-            <button onClick={() => navigate('/verifikasi-wa')}
-              className="text-xs bg-green-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-green-700 transition flex-shrink-0">
-              Verifikasi
-            </button>
-          )}
+
+          {/* KYC Verification Bar */}
+          <div className="p-3.5 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${isVerified ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-400'}`}>🛡️</div>
+              <div>
+                <p className="text-xs font-bold text-slate-800">{isVerified ? 'Akun Terverifikasi Resmi' : 'Verifikasi Identitas (KYC)'}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">{isVerified ? 'Lencana centang biru menyala' : 'Dapatkan status penjual terpercaya'}</p>
+              </div>
+            </div>
+            {isVerified ? (
+              <span className="text-[10px] bg-blue-100 text-blue-700 font-black px-2.5 py-1 rounded-md">VERIFIED</span>
+            ) : (
+              <button onClick={() => navigate('/verifikasi')}
+                className="text-[11px] bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm transition active:scale-95">
+                Ajukan
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Verifikasi KYC */}
-        <div className={`rounded-2xl p-4 border shadow-sm flex items-center justify-between ${isVerified ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-100'}`}>
-          <div>
-            <p className="text-sm font-bold text-gray-800">{isVerified ? 'Akun Terverifikasi' : 'Verifikasi Akun (KYC)'}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{isVerified ? 'Centang biru aktif di profilmu' : 'Dapatkan centang biru kepercayaan'}</p>
+        {/* Form Profil Utama */}
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 space-y-4">
+          <div className="flex items-center gap-2 border-b border-slate-50 pb-3 mb-1">
+            <span className="text-sm">📝</span>
+            <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Sunting Data Akun</h3>
           </div>
-          {isVerified ? (
-            <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, background:'#3b82f6', color:'white', borderRadius:'50%', fontSize:16, fontWeight:'bold', flexShrink:0 }}>✓</span>
-          ) : (
-            <button onClick={() => navigate('/verifikasi')}
-              className="text-xs bg-blue-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-blue-700 transition flex-shrink-0">
-              Ajukan
-            </button>
-          )}
-        </div>
 
-        {/* Form Profil */}
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-4">
-          <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Informasi Profil</p>
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">Username <span className="text-gray-400 font-normal">(tampil di chat)</span></label>
+            <label className="text-xs font-bold text-slate-700 block mb-1.5">✨ Username</label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">@</span>
-              <input name="username" value={form.username} onChange={handleChange} placeholder="contoh: budi123"
-                className="w-full border-2 border-gray-100 rounded-xl pl-8 pr-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-extrabold text-sm">@</span>
+              <input name="username" value={form.username} onChange={handleChange} placeholder="budi_sanjaya"
+                className="w-full border-2 border-slate-100 rounded-xl pl-9 pr-4 py-2.5 text-sm outline-none focus:border-emerald-500 bg-slate-50/50 focus:bg-white transition" />
             </div>
           </div>
+
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">Nama Tampilan <span className="text-red-500">*</span></label>
-            <input name="nama" value={form.nama} onChange={handleChange} placeholder="Nama yang tampil ke pengguna lain"
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
+            <label className="text-xs font-bold text-slate-700 block mb-1.5">👤 Nama Tampilan <span className="text-red-500">*</span></label>
+            <input name="nama" value={form.nama} onChange={handleChange} placeholder="Nama sapaan publik"
+              className="w-full border-2 border-slate-100 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-emerald-500 bg-slate-50/50 focus:bg-white transition" />
           </div>
+
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">Nama Lengkap</label>
-            <input name="nama_lengkap" value={form.nama_lengkap} onChange={handleChange} placeholder="Nama sesuai KTP"
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
+            <label className="text-xs font-bold text-slate-700 block mb-1.5">💳 Nama Lengkap Sesuai KTP</label>
+            <input name="nama_lengkap" value={form.nama_lengkap} onChange={handleChange} placeholder="Nama resmi"
+              className="w-full border-2 border-slate-100 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-emerald-500 bg-slate-50/50 focus:bg-white transition" />
           </div>
+
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">Email</label>
-            <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="contoh@email.com"
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
+            <label className="text-xs font-bold text-slate-700 block mb-1.5">📧 Alamat Email</label>
+            <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="kamu@email.com"
+              className="w-full border-2 border-slate-100 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-emerald-500 bg-slate-50/50 focus:bg-white transition" />
           </div>
+
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">Jenis Kelamin</label>
+            <label className="text-xs font-bold text-slate-700 block mb-1.5">🧬 Jenis Kelamin</label>
             <div className="grid grid-cols-3 gap-2">
               {['Laki-laki', 'Perempuan', 'Lainnya'].map(jk => (
                 <button key={jk} onClick={() => setForm(f => ({ ...f, jenis_kelamin: jk }))}
-                  className={`py-2.5 rounded-xl text-xs font-semibold border-2 transition ${form.jenis_kelamin === jk ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-400'}`}>
+                  className={`py-2 rounded-xl text-xs font-bold border-2 transition-all active:scale-95 ${form.jenis_kelamin === jk ? 'border-emerald-500 bg-emerald-50/50 text-emerald-700' : 'border-slate-100 bg-slate-50/40 text-slate-400'}`}>
                   {jk}
                 </button>
               ))}
             </div>
           </div>
+
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">
-              Tanggal Lahir {form.tanggal_lahir && <span className="text-gray-400 font-normal ml-2">({hitungUmur(form.tanggal_lahir)} tahun)</span>}
+            <label className="text-xs font-bold text-slate-700 block mb-1.5">
+              📅 Tanggal Lahir
             </label>
             <input name="tanggal_lahir" type="date" value={form.tanggal_lahir} onChange={handleChange}
               max={new Date().toISOString().split('T')[0]}
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
+              className="w-full border-2 border-slate-100 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-emerald-500 bg-slate-50/50 focus:bg-white transition" />
           </div>
+
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">Alamat</label>
-            <textarea name="alamat" value={form.alamat} onChange={handleChange} placeholder="Alamat lengkap kamu" rows={2}
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition resize-none" />
+            <label className="text-xs font-bold text-slate-700 block mb-1.5">🏠 Alamat Domisili</label>
+            <textarea name="alamat" value={form.alamat} onChange={handleChange} placeholder="Tuliskan nama jalan, nomor rumah, RT/RW..." rows={2}
+              className="w-full border-2 border-slate-100 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-emerald-500 bg-slate-50/50 focus:bg-white transition resize-none" />
           </div>
+
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">Nomor WhatsApp <span className="text-gray-400 font-normal">(tidak bisa diubah)</span></label>
-            <div className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm bg-gray-100 text-gray-500">+{form.nomor_wa}</div>
+            <label className="text-xs font-bold text-slate-400 block mb-1.5">🔐 Nomor WhatsApp Terikat</label>
+            <div className="w-full border-2 border-slate-100 rounded-xl px-4 py-2.5 text-sm bg-slate-100/80 text-slate-400 font-semibold select-none">+{form.nomor_wa}</div>
           </div>
+
           <button onClick={handleSimpanProfil} disabled={saving}
-            className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl py-3.5 text-sm font-bold transition shadow-sm disabled:opacity-50">
-            {saving ? 'Menyimpan...' : 'Simpan Profil'}
+            className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl py-3 text-sm font-extrabold transition-all shadow-md shadow-emerald-500/10 disabled:opacity-50 active:scale-98">
+            {saving ? 'Sinkronisasi Data...' : 'Simpan Perubahan'}
           </button>
         </div>
 
-        {/* Info Toko */}
+        {/* Manajemen Kelola Unit Bisnis/Toko */}
         {toko && (
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-            {toko.foto_url && <img src={toko.foto_url} alt={toko.nama} className="w-full h-28 object-cover" />}
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden group">
+            <div className="relative">
+              {toko.foto_url ? (
+                <img src={toko.foto_url} alt={toko.nama} className="w-full h-32 object-cover transition-transform duration-500 group-hover:scale-105" />
+              ) : (
+                <div className="w-full h-24 bg-gradient-to-r from-slate-100 to-slate-200 flex items-center justify-center text-slate-400 text-xs font-bold">Belum Ada Banner Toko</div>
+              )}
+              <span className={`absolute top-3 right-3 text-[10px] px-2.5 py-1 rounded-md font-black shadow-sm ${toko.is_buka ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                {toko.is_buka ? 'OPERASIONAL' : 'TUTUP'}
+              </span>
+            </div>
             <div className="p-5">
-              <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-3">
-                {toko.jenis === 'jasa' ? 'Jasa Saya' : toko.jenis === 'preloved' ? 'Preloved Saya' : 'Toko Saya'}
+              <p className="text-[10px] text-indigo-500 font-extrabold uppercase tracking-widest mb-1.5">
+                {toko.jenis === 'jasa' ? '💼 Entitas Jasa Anda' : toko.jenis === 'preloved' ? '♻️ Katalog Preloved' : '🏪 Toko Terdaftar'}
               </p>
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h3 className="font-extrabold text-gray-900">{toko.nama}</h3>
-                  <p className="text-xs text-gray-400">{toko.kategori}</p>
-                </div>
-                <span className={`text-xs px-3 py-1.5 rounded-xl font-bold ${toko.is_buka ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-                  {toko.is_buka ? 'BUKA' : 'TUTUP'}
-                </span>
-              </div>
+              <h3 className="font-black text-slate-900 text-base leading-tight">{toko.nama}</h3>
+              <p className="text-xs text-slate-400 mt-0.5">{toko.kategori || 'Kategori Umum'}</p>
+              
               <button onClick={() => navigate('/dashboard')}
-                className="w-full border-2 border-gray-100 text-gray-600 text-sm py-2.5 rounded-xl font-semibold hover:bg-gray-50 transition">
-                Kelola {toko.jenis === 'jasa' ? 'Jasa' : toko.jenis === 'preloved' ? 'Preloved' : 'Toko'} →
+                className="w-full mt-4 bg-slate-50 border border-slate-200 text-slate-700 text-xs py-2.5 rounded-xl font-bold hover:bg-slate-100 hover:text-slate-900 transition active:scale-98">
+                Masuk ke Dashboard Manajemen →
               </button>
             </div>
           </div>
         )}
 
-        {/* Keamanan */}
-        <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm">
-          <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-4">Keamanan Akun</p>
-          <div className="space-y-3">
+        {/* Rubrik Keamanan Akun */}
+        <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm space-y-4">
+          <div className="flex items-center gap-2 border-b border-slate-50 pb-3 mb-1">
+            <span className="text-sm">🔑</span>
+            <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Kredensial & Sandi</h3>
+          </div>
+          
+          <div className="space-y-3.5">
             <div>
-              <label className="text-sm font-semibold text-gray-700 block mb-1.5">Kata Sandi Baru</label>
+              <label className="text-xs font-bold text-slate-700 block mb-1.5">Kata Sandi Baru</label>
               <input type="password" value={formPassword.baru} onChange={e => setFormPassword(f => ({ ...f, baru: e.target.value }))}
-                placeholder="Minimal 6 karakter"
-                className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
+                placeholder="Entri sandi minimal 6 digit"
+                className="w-full border-2 border-slate-100 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-emerald-500 bg-slate-50/50 focus:bg-white transition" />
             </div>
             <div>
-              <label className="text-sm font-semibold text-gray-700 block mb-1.5">Konfirmasi Kata Sandi</label>
+              <label className="text-xs font-bold text-slate-700 block mb-1.5">Konfirmasi Ulang Sandi</label>
               <input type="password" value={formPassword.konfirmasi} onChange={e => setFormPassword(f => ({ ...f, konfirmasi: e.target.value }))}
-                placeholder="Ulangi kata sandi baru"
-                className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
+                placeholder="Verifikasi kesamaan sandi"
+                className="w-full border-2 border-slate-100 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-emerald-500 bg-slate-50/50 focus:bg-white transition" />
             </div>
             <button onClick={handleGantiPassword} disabled={savingPassword}
-              className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl py-3 text-sm font-bold transition shadow-sm disabled:opacity-50">
-              {savingPassword ? 'Menyimpan...' : 'Ganti Kata Sandi'}
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl py-2.5 text-xs font-bold transition shadow-md active:scale-98 disabled:opacity-50">
+              {savingPassword ? 'Mengganti...' : 'Perbarui Autentikasi'}
             </button>
           </div>
         </div>
 
-        {/* Keluar */}
-        <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm">
+        {/* Sesi Keluar */}
+        <div className="bg-white rounded-3xl p-4 border border-slate-100 shadow-sm">
           <button onClick={handleLogout}
-            className="w-full border-2 border-red-100 text-red-600 text-sm py-3 rounded-xl font-bold hover:bg-red-50 transition">
-            Keluar dari Akun
+            className="w-full bg-rose-50/50 hover:bg-rose-50 border border-rose-100 text-rose-600 text-xs py-3 rounded-xl font-extrabold transition active:scale-98">
+            Terminasi Sesi Keluar (Logout)
           </button>
         </div>
 
       </div>
 
-      {/* Bottom nav */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex shadow-lg">
-        <button onClick={() => navigate('/cari')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
-          <span className="text-lg">🔍</span>
-          <span className="text-xs font-medium text-gray-400">Cari</span>
+      {/* Kontemporer Bottom Navigation Bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-100 flex shadow-[0_-4px_24px_rgba(0,0,0,0.04)] z-[1000] pb-safe">
+        <button onClick={() => navigate('/cari')} className="flex-1 py-3 flex flex-col items-center gap-1 active:scale-95 transition-transform">
+          <span className="text-xl">🔍</span>
+          <span className="text-[10px] font-bold text-slate-400">Cari</span>
         </button>
-        <button onClick={() => navigate('/peta')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
-          <span className="text-lg">🗺️</span>
-          <span className="text-xs font-medium text-gray-400">Peta</span>
+        <button onClick={() => navigate('/peta')} className="flex-1 py-3 flex flex-col items-center gap-1 active:scale-95 transition-transform">
+          <span className="text-xl">🗺️</span>
+          <span className="text-[10px] font-bold text-slate-400">Peta</span>
         </button>
-        <button onClick={() => navigate('/dashboard')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
-          <span className="text-lg">🏪</span>
-          <span className="text-xs font-medium text-gray-400">Toko</span>
+        <button onClick={() => navigate('/dashboard')} className="flex-1 py-3 flex flex-col items-center gap-1 active:scale-95 transition-transform">
+          <span className="text-xl">🏪</span>
+          <span className="text-[10px] font-bold text-slate-400">Toko</span>
         </button>
-        <button onClick={() => navigate('/profil')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
-          <span className="text-lg">👤</span>
-          <span className="text-xs font-bold text-red-600">Profil</span>
+        <button onClick={() => navigate('/profil')} className="flex-1 py-3 flex flex-col items-center gap-1 active:scale-95 transition-transform">
+          <span className="text-xl">👤</span>
+          <span className="text-[10px] font-black text-emerald-600">Profil</span>
         </button>
       </div>
+
     </div>
   )
 }

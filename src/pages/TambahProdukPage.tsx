@@ -1,284 +1,247 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { kompresGambar, validasiGambar, formatUkuran } from '../lib/imageHelper'
-import { KATEGORI_PRELOVED } from '../lib/kategori'
+
+type JenisDaftar = 'toko' | 'jasa' | 'preloved'
+
+const CONFIG_TEMA = {
+  toko: { border: 'focus:border-emerald-500', btn: 'bg-emerald-600 hover:bg-emerald-700 text-white', text: 'text-emerald-600', bg: 'bg-emerald-50/50' },
+  jasa: { border: 'focus:border-blue-500', btn: 'bg-blue-600 hover:bg-blue-700 text-white', text: 'text-blue-600', bg: 'bg-blue-50/50' },
+  preloved: { border: 'focus:border-purple-500', btn: 'bg-purple-600 hover:bg-purple-700 text-white', text: 'text-purple-600', bg: 'bg-purple-50/50' },
+}
 
 export default function TambahProdukPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const [loading, setLoading] = useState(false)
+  const tokoId = searchParams.get('toko') || ''
+
+  const [namaToko, setNamaToko] = useState('')
+  const [jenisToko, setJenisToko] = useState<JenisDaftar>('toko')
   const [loadingToko, setLoadingToko] = useState(true)
+  
+  const [form, setForm] = useState({ nama: '', harga: '', deskripsi: '', foto_url: '' })
+  const [saving, setSaving] = useState(false)
   const [uploadingFoto, setUploadingFoto] = useState(false)
-  const [infoFoto, setInfoFoto] = useState<string>('')
-  const [tokoId, setTokoId] = useState('')
-  const [jenisToko, setJenisToko] = useState<string>('')
-  const [semuaToko, setSemuaToko] = useState<any[]>([])
-  const [form, setForm] = useState({
-    nama: '',
-    harga: '',
-    deskripsi: '',
-    foto_url: '',
-    kategori_produk: '', // khusus preloved
-  })
+  const [infoFoto, setInfoFoto] = useState('')
 
-  useEffect(() => { loadToko() }, [])
+  useEffect(() => {
+    if (!tokoId) {
+      toast.error('ID Toko tidak valid!')
+      navigate('/produk')
+      return
+    }
+    ambilDataToko()
+  }, [tokoId])
 
-  async function loadToko() {
+  async function ambilDataToko() {
     setLoadingToko(true)
-    const { data: userData } = await supabase.auth.getUser()
-    if (!userData.user) {
-      toast.error('Silakan login terlebih dahulu')
-      navigate('/login')
-      return
-    }
-
-    const { data: tokoList, error } = await supabase
+    const { data, error } = await supabase
       .from('toko')
-      .select('id, nama, jenis')
-      .eq('user_id', userData.user.id)
-      .order('created_at', { ascending: false })
+      .select('nama, jenis')
+      .eq('id', tokoId)
+      .single()
 
-    if (error) {
-      toast.error('Gagal memuat toko: ' + error.message)
-      setLoadingToko(false)
-      return
+    if (error || !data) {
+      toast.error('Gagal memverifikasi data lapak')
+      navigate('/produk')
+    } else {
+      setNamaToko(data.nama)
+      setJenisToko(data.jenis as JenisDaftar)
     }
-
-    if (!tokoList || tokoList.length === 0) {
-      toast.error('Kamu belum punya toko. Buat toko dulu.')
-      navigate('/buat-toko')
-      return
-    }
-
-    setSemuaToko(tokoList)
-
-    const tokoIdFromUrl = searchParams.get('toko')
-    const tokoTerpilih = tokoList.find(t => t.id === tokoIdFromUrl) || tokoList[0]
-    setTokoId(tokoTerpilih.id)
-    setJenisToko(tokoTerpilih.jenis || 'toko')
     setLoadingToko(false)
   }
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setForm({ ...form, [e.target.name]: e.target.value })
-  }
-
-  function pilihToko(t: any) {
-    setTokoId(t.id)
-    setJenisToko(t.jenis || 'toko')
-    setForm(f => ({ ...f, kategori_produk: '' }))
   }
 
   async function handleUploadFoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    const errorMsg = validasiGambar(file, 10)
-    if (errorMsg) { toast.error(errorMsg); return }
+
+    const galatValidasi = validasiGambar(file, 10) // Maksimal 10MB sebelum kompres
+    if (galatValidasi) { toast.error(galatValidasi); return }
+
     setUploadingFoto(true)
     setInfoFoto('')
+
     try {
+      // Kompres otomatis gambar berukuran besar dari kamera HP seller
       const fileKompres = await kompresGambar(file, {
-        maxWidth: 800, maxHeight: 800, kualitas: 0.75, maxSizeKB: 500,
+        maxWidth: 700, maxHeight: 700, kualitas: 0.8, maxSizeKB: 300
       })
+      
       setInfoFoto(`${formatUkuran(file.size)} → ${formatUkuran(fileKompres.size)}`)
-      const fileName = `produk-${Date.now()}.jpg`
+      const ext = file.name.split('.').pop()
+      const fileName = `${tokoId}-${Date.now()}.${ext}`
+
       const { error: uploadError } = await supabase.storage
-        .from('produk-foto').upload(fileName, fileKompres, { upsert: true })
-      if (uploadError) { toast.error('Gagal upload foto'); return }
+        .from('produk-foto')
+        .upload(fileName, fileKompres, { upsert: true })
+
+      if (uploadError) { toast.error('Gagal menyimpan file foto'); return }
+
       const { data: urlData } = supabase.storage.from('produk-foto').getPublicUrl(fileName)
       setForm(f => ({ ...f, foto_url: urlData.publicUrl }))
-      toast.success('Foto berhasil diupload!')
+      toast.success('Foto produk berhasil diproses!')
     } catch {
-      toast.error('Gagal memproses foto')
+      toast.error('Gagal memproses gambar')
     } finally {
       setUploadingFoto(false)
     }
   }
 
-  async function handleSubmit() {
-    if (!form.nama || !form.harga) {
-      toast.error('Nama dan harga wajib diisi'); return
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.nama || !form.harga) { toast.error('Nama barang dan harga wajib diisi!'); return }
+
+    const hargaParsed = parseInt(form.harga, 10)
+    if (isNaN(hargaParsed) || hargaParsed < 0) {
+      toast.error('Masukkan nominal harga yang valid')
+      return
     }
-    if (!tokoId) {
-      toast.error('Toko tidak ditemukan'); return
-    }
-    setLoading(true)
+
+    setSaving(true)
+
     const { error } = await supabase.from('produk').insert({
       toko_id: tokoId,
-      nama: form.nama,
-      harga: parseInt(form.harga),
-      deskripsi: form.deskripsi,
-      foto_url: form.foto_url,
-      // Simpan kategori produk khusus preloved
-      ...(jenisToko === 'preloved' && form.kategori_produk
-        ? { kategori: form.kategori_produk }
-        : {}),
+      nama: form.nama.trim(),
+      harga: hargaParsed,
+      deskripsi: form.deskripsi.trim() || null,
+      foto_url: form.foto_url || null
     })
-    setLoading(false)
+
+    setSaving(false)
+
     if (error) {
-      toast.error('Gagal tambah produk: ' + error.message)
+      toast.error('Gagal menambahkan produk: ' + error.message)
     } else {
-      toast.success('Produk berhasil ditambahkan!')
-      navigate(`/produk?toko=${tokoId}`)
+      toast.success('Produk baru berhasil dipublikasikan!')
+      navigate(`/produk?toko=${tokoId}`) // Kembali ke list produk toko tersebut
     }
   }
 
-  const tokoTerpilih = semuaToko.find(t => t.id === tokoId)
-  const isPreloved = jenisToko === 'preloved'
+  const tema = CONFIG_TEMA[jenisToko]
 
   if (loadingToko) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-400 text-sm">Memuat...</p>
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center">
+        <div className="w-10 h-10 border-[3px] border-slate-200 border-t-slate-800 rounded-full animate-spin mb-3"></div>
+        <p className="text-[11px] font-bold text-slate-500 tracking-widest uppercase">Mempersiapkan Formulir...</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-8">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-4 py-4 flex items-center gap-3 sticky top-0 z-10 shadow-sm">
-        <button onClick={() => navigate(`/produk?toko=${tokoId}`)}
-          className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">
+    <div className="min-h-screen bg-[#F8FAFC] pb-12 text-slate-800 font-medium antialiased">
+      
+      {/* HEADER NAVIGASI */}
+      <div className="bg-white border-b border-slate-100 px-4 py-4 flex items-center gap-3 sticky top-0 z-30 shadow-sm bg-white/95 backdrop-blur-md">
+        <button 
+          onClick={() => navigate(`/produk?toko=${tokoId}`)} 
+          className="w-9 h-9 bg-slate-50 rounded-xl flex items-center justify-center text-slate-600 border border-slate-100 hover:bg-slate-100 active:scale-95 transition-all"
+        >
           ←
         </button>
         <div>
-          <h1 className="font-extrabold text-gray-900 text-base">
-            {isPreloved ? '♻️ Tambah Barang Preloved' : '📦 Tambah Produk'}
-          </h1>
-          <p className="text-xs text-gray-400">Isi detail {isPreloved ? 'barang' : 'produk'} baru</p>
+          <h1 className="font-black text-slate-900 text-base tracking-tight">Tambah Produk</h1>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Lapak: {namaToko}</p>
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 pt-5">
-
-        {/* Switcher toko */}
-        {semuaToko.length > 1 && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 mb-4">
-            <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2 px-1">
-              Tambahkan ke Toko
-            </p>
-            <div className="flex gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-              {semuaToko.map(t => (
-                <button key={t.id} onClick={() => pilihToko(t)}
-                  className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border-2 transition
-                    ${tokoId === t.id ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-500'}`}>
-                  <span>{t.jenis === 'jasa' ? '🛠️' : t.jenis === 'preloved' ? '♻️' : '🏪'}</span>
-                  {t.nama}
+      <div className="max-w-md mx-auto px-4 pt-5">
+        <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-slate-100 p-5 space-y-5 shadow-sm">
+          
+          {/* ZONA UNGGAH GAMBAR */}
+          <div>
+            <label className="text-[10px] text-slate-400 font-black uppercase tracking-wider block mb-1.5">Foto Produk / Jasa</label>
+            {form.foto_url ? (
+              <div className="relative rounded-2xl overflow-hidden aspect-[16/10] bg-slate-100 mb-3 border border-slate-100 shadow-inner">
+                <img src={form.foto_url} alt="Pratinjau Produk" className="w-full h-full object-cover" />
+                <button 
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, foto_url: '' }))}
+                  className="absolute top-2 right-2 bg-black/70 text-white w-7 h-7 rounded-full text-xs flex items-center justify-center font-bold backdrop-blur-sm"
+                >
+                  ✕
                 </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {semuaToko.length === 1 && tokoTerpilih && (
-          <div className="flex items-center gap-2 mb-4 px-1">
-            <span className="text-sm">{tokoTerpilih.jenis === 'jasa' ? '🛠️' : tokoTerpilih.jenis === 'preloved' ? '♻️' : '🏪'}</span>
-            <p className="text-xs text-gray-400">
-              Menambahkan ke <span className="font-bold text-gray-600">{tokoTerpilih.nama}</span>
-            </p>
-          </div>
-        )}
-
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-4">
-
-          {/* Foto */}
-          <div>
-            <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-3">
-              {isPreloved ? 'Foto Barang' : 'Foto Produk'}
-            </p>
-            {form.foto_url && (
-              <img src={form.foto_url} alt="foto" className="w-full h-40 object-cover rounded-2xl mb-3" />
-            )}
-            <label className={`w-full flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl py-5 cursor-pointer hover:bg-gray-50 transition ${uploadingFoto ? 'opacity-50' : ''}`}>
-              <input type="file" accept="image/*" onChange={handleUploadFoto} disabled={uploadingFoto} className="hidden" />
-              <span className="text-2xl mb-1">📷</span>
-              <p className="text-sm font-semibold text-gray-500">
-                {uploadingFoto ? '⏳ Mengkompresi & upload...' : form.foto_url ? 'Ganti Foto' : 'Pilih Foto'}
-              </p>
-              <p className="text-xs text-gray-400 mt-1">Foto akan dikompresi otomatis</p>
-            </label>
-            {infoFoto && (
-              <p className="text-xs text-green-600 font-semibold mt-2 text-center">✅ Ukuran: {infoFoto}</p>
-            )}
-          </div>
-
-          {/* Nama */}
-          <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">
-              {isPreloved ? 'Nama / Judul Barang *' : 'Nama Produk *'}
-            </label>
-            <input name="nama" value={form.nama} onChange={handleChange}
-              placeholder={isPreloved ? 'contoh: Jaket Denim H&M Size M' : 'contoh: Nasi Goreng Spesial'}
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
-          </div>
-
-          {/* Kategori — khusus preloved */}
-          {isPreloved && (
-            <div>
-              <label className="text-sm font-semibold text-gray-700 block mb-1.5">
-                Kategori Barang
-                <span className="text-xs font-normal text-gray-400 ml-1">(Opsional)</span>
+              </div>
+            ) : (
+              <label className={`w-full h-36 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-50/50 transition-all text-slate-400 gap-1 ${uploadingFoto ? 'opacity-40 pointer-events-none' : ''}`}>
+                <input type="file" accept="image/*" onChange={handleUploadFoto} disabled={uploadingFoto} className="hidden" />
+                <span className="text-2xl">📸</span>
+                <span className="text-xs font-bold text-slate-500">Pilih atau Ambil Foto</span>
+                <span className="text-[10px] text-slate-300 font-medium">Otomatis Dikompres Hemat Kuota</span>
               </label>
-              <select
-                name="kategori_produk"
-                value={form.kategori_produk}
+            )}
+            {uploadingFoto && (
+              <div className="flex items-center justify-center gap-2 mt-2 text-slate-500 text-xs font-semibold animate-pulse">
+                <div className="w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
+                Mengoptimalkan ukuran gambar...
+              </div>
+            )}
+            {infoFoto && <p className="text-[10px] font-bold text-emerald-600 text-center mt-1.5">✓ Ukuran dioptimalkan: {infoFoto}</p>}
+          </div>
+
+          {/* INPUT NAMA */}
+          <div>
+            <label className="text-[10px] text-slate-400 font-black uppercase tracking-wider block mb-1">Nama Produk / Layanan Jasa *</label>
+            <input 
+              type="text"
+              name="nama"
+              placeholder="Contoh: Kemeja Flanel Premium, Cuci AC, dll."
+              value={form.nama} 
+              onChange={handleChange}
+              required
+              className={`w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none bg-slate-50/50 font-semibold transition-all ${tema.border}`} 
+            />
+          </div>
+
+          {/* INPUT HARGA */}
+          <div>
+            <label className="text-[10px] text-slate-400 font-black uppercase tracking-wider block mb-1">Harga Jual / Nilai Tukar *</label>
+            <div className="relative">
+              <span className="absolute left-4 top-3.5 text-sm font-black text-slate-400">Rp</span>
+              <input 
+                type="number"
+                name="harga"
+                placeholder="Contoh: 45000"
+                value={form.harga} 
                 onChange={handleChange}
-                className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-400 bg-gray-50 transition"
-              >
-                <option value="">Pilih kategori barang</option>
-                {KATEGORI_PRELOVED.map(grup => (
-                  <optgroup key={grup.grup} label={`── ${grup.grup}`}>
-                    {grup.items.map(item => (
-                      <option key={item} value={item}>{item}</option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-              {form.kategori_produk && (
-                <p className="text-xs text-purple-600 font-semibold mt-1.5">
-                  ♻️ {form.kategori_produk}
-                </p>
-              )}
+                min="0"
+                required
+                className={`w-full border border-slate-200 rounded-xl pl-12 pr-4 py-3 text-sm outline-none bg-slate-50/50 font-mono font-bold transition-all ${tema.border}`} 
+              />
             </div>
-          )}
-
-          {/* Harga */}
-          <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">
-              {isPreloved ? 'Harga Jual (Rp) *' : 'Harga (Rp) *'}
-            </label>
-            <input name="harga" type="number" value={form.harga} onChange={handleChange}
-              placeholder={isPreloved ? 'contoh: 150000' : 'contoh: 15000'}
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
           </div>
 
-          {/* Deskripsi */}
+          {/* INPUT DESKRIPSI */}
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">
-              {isPreloved ? 'Deskripsi Barang' : 'Deskripsi Produk'}
-            </label>
-            <textarea name="deskripsi" value={form.deskripsi} onChange={handleChange}
-              placeholder={isPreloved
-                ? 'contoh: Kondisi 90%, ukuran M, warna biru. Beli 2022, jarang dipakai. Nego tipis.'
-                : 'Deskripsi singkat produk...'}
-              rows={3}
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-400 bg-gray-50 transition resize-none" />
+            <label className="text-[10px] text-slate-400 font-black uppercase tracking-wider block mb-1">Deskripsi & Detail Ketentuan</label>
+            <textarea 
+              name="deskripsi"
+              placeholder="Jelaskan ukuran, varian, kondisi barang, atau durasi pengerjaan jasa agar pembeli tertarik..."
+              value={form.deskripsi} 
+              onChange={handleChange} 
+              rows={4}
+              className={`w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none bg-slate-50/50 font-semibold resize-none h-28 transition-all ${tema.border}`} 
+            />
           </div>
 
-          {/* Simpan */}
-          <button onClick={handleSubmit} disabled={loading}
-            className={`w-full text-white rounded-2xl py-4 text-sm font-extrabold transition shadow-lg disabled:opacity-50
-              ${isPreloved
-                ? 'bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 shadow-purple-100'
-                : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-green-100'
-              }`}>
-            {loading ? 'Menyimpan...' : isPreloved ? '♻️ Pasang Barang' : '📦 Tambah Produk'}
-          </button>
+          {/* TOMBOL AKSI */}
+          <div className="pt-2">
+            <button 
+              type="submit" 
+              disabled={saving || uploadingFoto}
+              className={`w-full text-xs py-3.5 rounded-xl font-black uppercase tracking-wider active:scale-[0.98] transition-all shadow-md disabled:opacity-40 disabled:pointer-events-none ${tema.btn}`}
+            >
+              {saving ? 'Memproses Penyimpanan...' : '🚀 Publikasikan Produk'}
+            </button>
+          </div>
 
-        </div>
+        </form>
       </div>
     </div>
   )

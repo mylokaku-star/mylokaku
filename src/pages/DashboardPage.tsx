@@ -12,10 +12,8 @@ const PROFILE_CACHE_TTL = 30_000 // 30 detik
 export default function DashboardPage() {
   const navigate = useNavigate()
   const [user, setUser] = useState<any>(null)
-  const [toko, setToko] = useState<any>(null)
   const [semuaToko, setSemuaToko] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [isBuka, setIsBuka] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [isAdmin, setIsAdmin] = useState(false)
   const [isVerified, setIsVerified] = useState(false)
@@ -25,425 +23,376 @@ export default function DashboardPage() {
   const [userLng, setUserLng] = useState<number | null>(null)
   const [hapusTarget, setHapusTarget] = useState<any>(null)
   const [menghapus, setMenghapus] = useState(false)
-  const channelRef = useRef<any>(null)
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null)
 
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
-      (pos) => { setUserLat(pos.coords.latitude); setUserLng(pos.coords.longitude) },
+      pos => { setUserLat(pos.coords.latitude); setUserLng(pos.coords.longitude) },
       () => {}
     )
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) {
-        navigate('/login')
+    loadDashboardData()
+  }, [])
+
+  async function loadDashboardData() {
+    try {
+      const { data: userData } = await supabase.auth.getUser()
+      if (!userData.user) { navigate('/login'); return }
+      setUser(userData.user)
+
+      const sekarang = Date.now()
+      if (profileCache && (sekarang - profileCacheTime < PROFILE_CACHE_TTL)) {
+        setNamaUser(profileCache.nama || '')
+        setIsVerified(profileCache.is_verified || false)
+        setIsVerifiedWA(profileCache.is_wa_verified || false)
+        setIsAdmin(profileCache.is_admin || false)
       } else {
-        setUser(data.user)
-        loadToko(data.user.id)
-      }
-    })
-  }, [])
-
-  async function loadToko(userId: string) {
-    let profileData: any = null
-    if (profileCache && Date.now() - profileCacheTime < PROFILE_CACHE_TTL) {
-      profileData = profileCache
-    } else {
-      const { data } = await supabase
-        .from('profiles')
-        .select('nama, is_admin, is_verified, is_wa_verified, nomor_wa, verification_requested_at')
-        .eq('id', userId)
-        .single()
-      profileData = data
-      profileCache = data
-      profileCacheTime = Date.now()
-    }
-
-    setIsAdmin(profileData?.is_admin || false)
-    setIsVerified(profileData?.is_verified || false)
-    setIsVerifiedWA(profileData?.is_wa_verified || false)
-    setNamaUser(profileData?.nama || '')
-
-    // Ambil SEMUA toko milik user (bisa lebih dari 1), bukan .single()
-    const { data: tokoList } = await supabase
-      .from('toko')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-
-    setSemuaToko(tokoList || [])
-
-    const data = tokoList && tokoList.length > 0 ? tokoList[0] : null
-    if (data) {
-      setToko(data)
-      setIsBuka(data.is_buka)
-      loadUnread(data.id)
-      subscribeUnread(data.id)
-    }
-    setLoading(false)
-  }
-
-  function subscribeUnread(tokoIdToWatch: string) {
-    // Tutup channel lama (kalau ada) sebelum bikin yang baru — pakai ref, bukan setState,
-    // supaya tidak ada masalah double-invoke updater function di React
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current)
-      channelRef.current = null
-    }
-
-    const newChannel = supabase
-      .channel(`unread-${tokoIdToWatch}-${Date.now()}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'pesan',
-        filter: `toko_id=eq.${tokoIdToWatch}`,
-      }, payload => {
-        const msg = payload.new as any
-        if (!msg.is_penjual) {
-          setUnreadCount(prev => prev + 1)
-          toast('💬 Pesan baru masuk!', {
-            description: msg.isi?.length > 50 ? msg.isi.slice(0, 50) + '...' : msg.isi,
-            duration: 5000,
-            action: { label: 'Balas', onClick: () => navigate(`/chat/${tokoIdToWatch}`) },
-          })
-          let blinkInterval: any
-          let original = document.title
-          let blink = false
-          blinkInterval = setInterval(() => {
-            document.title = blink ? `💬 Pesan Baru - Lokaku` : original
-            blink = !blink
-          }, 1000)
-          setTimeout(() => { clearInterval(blinkInterval); document.title = original }, 10000)
-          window.addEventListener('focus', () => { clearInterval(blinkInterval); document.title = original }, { once: true })
+        const { data: p } = await supabase.from('profiles').select('*').eq('id', userData.user.id).maybeSingle()
+        if (p) {
+          profileCache = p
+          profileCacheTime = sekarang
+          setNamaUser(p.nama || '')
+          setIsVerified(p.is_verified || false)
+          setIsVerifiedWA(p.is_wa_verified || false)
+          setIsAdmin(p.is_admin || false)
         }
-      })
-      .subscribe()
-
-    channelRef.current = newChannel
-  }
-
-  function pindahToko(t: any) {
-    setToko(t)
-    setIsBuka(t.is_buka)
-    loadUnread(t.id)
-    subscribeUnread(t.id)
-  }
-
-  useEffect(() => {
-    // Cleanup channel saat komponen unmount (pindah halaman)
-    return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current)
-        channelRef.current = null
       }
-    }
-  }, [])
 
-  async function loadUnread(tokoId: string) {
-    const { count } = await supabase
-      .from('pesan').select('*', { count: 'exact', head: true })
-      .eq('toko_id', tokoId).eq('is_penjual', false).eq('is_read', false)
-    setUnreadCount(count || 0)
+      const { data: tokoData } = await supabase
+        .from('toko')
+        .select('*')
+        .eq('user_id', userData.user.id)
+        .order('created_at', { ascending: false })
+
+      const listToko = tokoData || []
+      setSemuaToko(listToko)
+
+      if (listToko.length > 0) {
+        const tokoId = listToko[0].id
+        const { count } = await supabase
+          .from('pesan').select('*', { count: 'exact', head: true })
+          .eq('toko_id', tokoId).eq('is_penjual', false).eq('is_read', false)
+        setUnreadCount(count || 0)
+      }
+
+    } catch (err: any) {
+      toast.error('Gagal memuat data bisnis')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  async function toggleStatus() {
-    if (!toko) return
-    const newStatus = !isBuka
-    const { error } = await supabase.from('toko').update({ is_buka: newStatus }).eq('id', toko.id)
-    if (!error) {
-      setIsBuka(newStatus)
-      toast.success(newStatus ? 'Toko sekarang BUKA! 🎉' : 'Toko sekarang TUTUP')
+  async function toggleBuka(tokoId: string, currentStatus: boolean) {
+    setUpdatingStatusId(tokoId)
+    const nextStatus = !currentStatus
+    
+    const { error } = await supabase
+      .from('toko')
+      .update({ is_buka: nextStatus })
+      .eq('id', tokoId)
+
+    setUpdatingStatusId(null)
+
+    if (error) {
+      toast.error('Gagal mengubah status operasional')
+    } else {
+      setSemuaToko(prev => prev.map(t => t.id === tokoId ? { ...t, is_buka: nextStatus } : t))
+      toast.success(nextStatus ? 'Toko Buka! Radar warga mendeteksi Anda.' : 'Toko ditutup sementara.')
     }
   }
 
   async function konfirmasiHapusToko() {
     if (!hapusTarget) return
     setMenghapus(true)
-    const { error } = await supabase.from('toko').delete().eq('id', hapusTarget.id)
+    
+    const { error } = await supabase
+      .from('toko')
+      .delete()
+      .eq('id', hapusTarget.id)
+
     setMenghapus(false)
-    if (error) {
-      toast.error('Gagal menghapus toko: ' + error.message)
-      return
-    }
-    toast.success(`"${hapusTarget.nama}" berhasil dihapus`)
-    const sisaToko = semuaToko.filter(t => t.id !== hapusTarget.id)
-    setSemuaToko(sisaToko)
     setHapusTarget(null)
-    if (toko?.id === hapusTarget.id) {
-      const next = sisaToko[0] || null
-      if (next) {
-        pindahToko(next)
-      } else {
-        setToko(null)
-        if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null }
-      }
+
+    if (error) {
+      toast.error('Gagal menghapus entitas')
+    } else {
+      toast.success('Entitas bisnis berhasil dihapus')
+      setSemuaToko(prev => prev.filter(t => t.id !== hapusTarget.id))
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <img src="/icon-192x192.png" alt="Lokaku"
-            className="w-12 h-12 rounded-2xl object-cover mx-auto mb-3 animate-pulse" />
-          <p className="text-gray-400 text-sm">Memuat...</p>
-        </div>
-      </div>
-    )
+  function getThemeClasses(jenis: string, isBuka: boolean) {
+    if (!isBuka) return {
+      badgeBg: 'bg-slate-100 text-slate-500 border-slate-200',
+      cardBorder: 'border-rose-200 opacity-90 saturate-[0.8] shadow-sm'
+    }
+    switch (jenis) {
+      case 'jasa':
+        return {
+          badgeBg: 'bg-blue-50 text-blue-600 border-blue-100',
+          cardBorder: 'border-blue-100/70 shadow-md shadow-blue-950/[0.02]'
+        }
+      case 'preloved':
+        return {
+          badgeBg: 'bg-purple-50 text-purple-600 border-purple-100',
+          cardBorder: 'border-purple-100/70 shadow-md shadow-purple-950/[0.02]'
+        }
+      default:
+        return {
+          badgeBg: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+          cardBorder: 'border-emerald-100/70 shadow-md shadow-emerald-950/[0.02]'
+        }
+    }
   }
+
+  if (loading) return (
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center">
+      <div className="w-10 h-10 border-[3px] border-emerald-100 border-t-emerald-600 rounded-full animate-spin mb-3"></div>
+      <p className="text-[11px] font-bold text-emerald-800 tracking-widest animate-pulse uppercase">Menyinkronkan Lapak...</p>
+    </div>
+  )
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-
-      {/* Header */}
-      <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 pt-6 pb-8">
-        <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={() => navigate('/cari')}
-            className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white text-xs px-3 py-1.5 rounded-xl font-bold transition"
-          >
-            ← Cari Toko
-          </button>
-          {isAdmin ? (
-            <button
-              onClick={() => navigate('/admin')}
-              className="flex items-center gap-1.5 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-xl font-bold hover:bg-gray-700 transition"
-            >
-              🛡️ Admin
-            </button>
-          ) : (
-            <div className="w-10" />
-          )}
-        </div>
-
-        <div className="flex flex-col items-center text-center">
-          <img src="/icon-192x192.png" alt="Lokaku"
-            className="w-10 h-10 rounded-2xl object-cover mb-2" />
-          <p className="text-green-100 text-xs">Selamat datang,</p>
-          <div className="flex items-center gap-2 mt-0.5">
-            <p className="text-white font-bold text-sm">{namaUser || user?.email}</p>
-            {isVerified && (
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: '3px',
-                background: '#3b82f6', color: 'white', borderRadius: '99px',
-                padding: '1px 7px', fontSize: '10px', fontWeight: 'bold',
-              }}>✓ Terverifikasi</span>
+    <div className="min-h-screen bg-[#F8FAFC] pb-28 text-slate-800 antialiased font-medium">
+      
+      {/* HEADER UTAMA */}
+      <div className="bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-950 px-4 pt-8 pb-14 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.08),transparent_50%)]"></div>
+        <div className="max-w-md mx-auto flex justify-between items-center relative z-10">
+          <div className="space-y-1">
+            <span className="text-[10px] bg-emerald-500/10 text-emerald-400 font-black px-2.5 py-0.5 rounded-full border border-emerald-500/20 uppercase tracking-widest">
+              Pusat Kendali Mitra
+            </span>
+            <h1 className="text-white font-black text-xl tracking-tight mt-1">Halo, {namaUser || 'Pemilik Lapak'} 👋</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <button onClick={() => navigate('/admin')} className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 text-[10px] px-2.5 py-1.5 rounded-xl font-black transition tracking-wider uppercase">
+                🛡️ Admin
+              </button>
             )}
+            <button onClick={() => navigate('/profil')} className="w-9 h-9 bg-white/5 hover:bg-white/10 rounded-full flex items-center justify-center border border-white/10 text-base shadow-lg transition backdrop-blur-sm active:scale-95">
+              👤
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto -mt-4 space-y-4">
-
-        {/* Promo & Event Slider — header lebih besar & tombol lebih menarik */}
-        <div className="space-y-3 px-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-extrabold text-gray-800">🔥 Promo & Event Sekitar</p>
-          </div>
-
-          {toko && (
-            <button
-              onClick={() => navigate('/buat-promo')}
-              className="w-full bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white rounded-2xl py-4 px-5 shadow-lg shadow-orange-200 transition flex items-center gap-3 active:scale-[0.98]"
-            >
-              <span className="text-3xl">🏷️</span>
-              <div className="flex-1 text-left">
-                <p className="font-extrabold text-sm">Buat Promo / Event Baru</p>
-                <p className="text-xs text-white/80 mt-0.5">Jangkau pembeli baru di sekitarmu</p>
-              </div>
-              <span className="text-xl">›</span>
-            </button>
-          )}
-
+      <div className="max-w-md mx-auto px-4 -mt-7 space-y-4 relative z-20">
+        
+        {/* SLIDER PROMO */}
+        <div className="space-y-1.5">
           <PromoSlider lat={userLat} lng={userLng} />
         </div>
 
-        <div className="px-4 space-y-4">
-
-          {/* Banner verifikasi WA */}
-          {!isVerifiedWA && (
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between shadow-sm">
-              <div>
-                <p className="text-sm font-bold text-amber-800">📱 Verifikasi Nomor WA</p>
-                <p className="text-xs text-amber-600 mt-0.5">Konfirmasi nomor WhatsApp-mu agar akun lebih aman</p>
+        {/* 🌟 SPANDUK TINGGI KONTRAS: DAFTARKAN UNIT USAHA BARU */}
+        {semuaToko.length > 0 && (
+          <button 
+            onClick={() => navigate('/buat-toko')}
+            className="w-full bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-4 flex items-center justify-between shadow-md active:scale-[0.99] transition-all border border-white/5 group relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_right,rgba(59,130,246,0.15),transparent_60%)]"></div>
+            <div className="flex items-center gap-3.5 relative z-10">
+              <div className="w-9 h-9 bg-emerald-500 text-slate-950 font-black rounded-xl flex items-center justify-center text-base shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform">
+                ➕
               </div>
-              <button
-                onClick={() => navigate('/verifikasi-wa')}
-                className="text-xs bg-amber-500 text-white px-4 py-2 rounded-xl font-bold hover:bg-amber-600 transition flex-shrink-0 ml-3"
-              >
-                Verifikasi →
-              </button>
+              <div className="text-left">
+                <h4 className="text-xs font-black uppercase tracking-wider text-emerald-400">Punya Usaha/Jasa Lain?</h4>
+                <p className="text-[11px] text-slate-400 mt-0.5 font-medium">Buka cabang atau daftarkan keahlian barumu di radar warga</p>
+              </div>
             </div>
-          )}
+            <span className="text-slate-500 text-lg group-hover:translate-x-1 transition-transform relative z-10">→</span>
+          </button>
+        )}
 
-          {toko ? (
-            <>
-              {/* Switcher kalau punya lebih dari 1 toko */}
-              {semuaToko.length > 1 && (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3">
-                  <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2 px-1">
-                    Toko/Jasa Kamu ({semuaToko.length})
-                  </p>
-                  <div className="flex gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-                    {semuaToko.map(t => (
-                      <button
-                        key={t.id}
-                        onClick={() => pindahToko(t)}
-                        className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border-2 transition
-                          ${toko?.id === t.id ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-500'}`}
-                      >
-                        <span>{t.jenis === 'jasa' ? '🛠️' : t.jenis === 'preloved' ? '♻️' : '🏪'}</span>
-                        {t.nama}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+        {/* LOGIC EMPTY STATE */}
+        {semuaToko.length === 0 ? (
+          <div className="bg-white rounded-3xl border border-slate-100 p-6 text-center shadow-md space-y-5">
+            <div className="w-16 h-16 bg-gradient-to-tr from-emerald-50 to-teal-50 rounded-2xl flex items-center justify-center text-3xl mx-auto shadow-inner">🏪</div>
+            <div className="space-y-1">
+              <h3 className="font-black text-slate-900 text-base tracking-tight">Belum Ada Lapak Terdaftar</h3>
+              <p className="text-xs text-slate-400 max-w-[280px] mx-auto leading-relaxed">Mulai jangkau tetangga dan pembeli lokal di sekitarmu dengan mendaftarkan toko fisik atau jasa panggilanmu.</p>
+            </div>
+            <button 
+              onClick={() => navigate('/buat-toko')}
+              className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-extrabold text-xs py-3.5 rounded-2xl shadow-lg shadow-emerald-600/10 active:scale-98 transition-all"
+            >
+              🚀 Buat Toko / Jasa Pertama Kamu
+            </button>
+          </div>
+        ) : (
+          
+          /* MULTI-TOKO INTERACTIVE LIST */
+          <div className="space-y-4">
+            {semuaToko.map((t) => {
+              const theme = getThemeClasses(t.jenis, t.is_buka)
+              const adaPesanBaru = unreadCount > 0
 
-              <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100">
-                {toko.foto_url ? (
-                  <img src={toko.foto_url} alt={toko.nama} className="w-full h-36 object-cover" />
-                ) : (
-                  <div className={`w-full h-24 flex items-center justify-center text-4xl ${toko.jenis === 'jasa' ? 'bg-gradient-to-br from-blue-50 to-blue-100' : toko.jenis === 'preloved' ? 'bg-gradient-to-br from-purple-50 to-purple-100' : 'bg-gradient-to-br from-green-50 to-green-100'}`}>
-                    {toko.jenis === 'jasa' ? '🛠️' : toko.jenis === 'preloved' ? '♻️' : '🏪'}
-                  </div>
-                )}
-                <div className="p-5">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h2 className="font-extrabold text-gray-900 text-lg">{toko.nama}</h2>
-                      <span className="text-xs text-gray-400 font-medium">{toko.kategori}</span>
-                      {toko.alamat && <p className="text-xs text-gray-400 mt-0.5">📍 {toko.alamat}</p>}
+              return (
+                <div key={t.id} className={`bg-white rounded-3xl border transition-all overflow-hidden ${theme.cardBorder}`}>
+                  
+                  {/* BARIS UTAMA: IDENTITAS & KONTROL OPERASIONAL */}
+                  <div className={`p-4 flex items-center justify-between border-b transition-colors duration-300 ${
+                    t.is_buka ? 'bg-slate-50/40 border-slate-100/50' : 'bg-rose-50/10 border-rose-100/20'
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <div className="relative flex h-3 w-3">
+                        {t.is_buka && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
+                        <span className={`relative inline-flex rounded-full h-3 w-3 ${t.is_buka ? 'bg-emerald-500' : 'bg-rose-400'}`}></span>
+                      </div>
+                      <div>
+                        <h2 className="font-black text-sm text-slate-900 tracking-tight leading-tight">{t.nama}</h2>
+                        <span className={`inline-block text-[9px] font-black px-2 py-0.5 mt-1 rounded-md border uppercase tracking-wider ${theme.badgeBg}`}>
+                          {t.jenis === 'jasa' ? '💼 Jasa Panggilan' : t.jenis === 'preloved' ? '♻️ Bursa Preloved' : '🏪 Retail Mandiri'}
+                        </span>
+                      </div>
                     </div>
-                    <span className={`text-xs px-3 py-1.5 rounded-xl font-bold ${isBuka ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-                      {isBuka ? '🟢 BUKA' : '🔴 TUTUP'}
-                    </span>
+
+                    <button
+                      disabled={updatingStatusId === t.id}
+                      onClick={() => toggleBuka(t.id, t.is_buka)}
+                      className={`text-xs px-3.5 py-1.5 rounded-xl font-black border transition-all active:scale-95 flex items-center gap-1.5 shadow-sm ${
+                        t.is_buka
+                          ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                          : 'bg-rose-600 border-rose-600 text-white hover:bg-rose-700'
+                      }`}
+                    >
+                      {updatingStatusId === t.id ? (
+                        <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                      ) : t.is_buka ? (
+                        '🟢 Buka'
+                      ) : (
+                        '🔴 Tutup'
+                      )}
+                    </button>
                   </div>
-                  <button
-                    onClick={toggleStatus}
-                    className={`w-full py-3.5 rounded-2xl text-sm font-extrabold transition shadow-sm ${isBuka ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-100' : 'bg-green-600 hover:bg-green-700 text-white shadow-green-100'}`}
+
+                  {/* 🔥 CRUCIAL HIGH-CONTRAST CHAT & ORDER HUB BANNER */}
+                  <button 
+                    onClick={() => navigate(`/chat/${t.id}`)}
+                    className={`w-full p-4 flex items-center justify-between border-b border-slate-100 transition-all text-left active:scale-[0.99] ${
+                      adaPesanBaru 
+                        ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/10 animate-pulse' 
+                        : 'bg-amber-50/40 hover:bg-amber-50/80 text-slate-800'
+                    }`}
                   >
-                    {isBuka ? '🔴 Tutup Toko Sekarang' : '🟢 Buka Toko Sekarang'}
+                    <div className="flex items-center gap-3.5">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg shadow-sm ${
+                        adaPesanBaru ? 'bg-white text-orange-600' : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        💬
+                      </div>
+                      <div>
+                        <h3 className={`text-xs font-black uppercase tracking-wider ${adaPesanBaru ? 'text-white' : 'text-slate-900'}`}>
+                          {adaPesanBaru ? '🚨 Masuk Pesanan Warga!' : 'Pusat Chat & Transaksi'}
+                        </h3>
+                        <p className={`text-[11px] font-medium mt-0.5 ${adaPesanBaru ? 'text-orange-50' : 'text-slate-400'}`}>
+                          {adaPesanBaru ? `Ada ${unreadCount} pesan belum dibaca! Segera respon.` : 'Konsultasi, nego harga, & detail pesanan'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-1.5">
+                      {adaPesanBaru ? (
+                        <span className="bg-white text-orange-600 text-[9px] font-black px-2 py-0.5 rounded-md shadow-sm">
+                          BALAS
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-sm">›</span>
+                      )}
+                    </div>
                   </button>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => navigate('/edit-toko')}
-                  className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition">
-                  <span className="text-2xl mb-2 block">✏️</span>
-                  <p className="font-bold text-gray-800 text-sm">Edit Toko</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Info & foto toko</p>
-                </button>
-                <button onClick={() => navigate('/produk')}
-                  className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition">
-                  <span className="text-2xl mb-2 block">📦</span>
-                  <p className="font-bold text-gray-800 text-sm">Kelola Produk</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Tambah & edit produk</p>
-                </button>
-                <button onClick={() => navigate(`/toko/${toko.id}`)}
-                  className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition">
-                  <span className="text-2xl mb-2 block">👁️</span>
-                  <p className="font-bold text-gray-800 text-sm">Lihat Toko</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Tampilan pembeli</p>
-                </button>
-                <button onClick={() => navigate(`/chat/${toko.id}`)}
-                  className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:shadow-md transition relative">
-                  {unreadCount > 0 && (
-                    <span className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center animate-bounce">
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                  )}
-                  <span className="text-2xl mb-2 block">💬</span>
-                  <p className="font-bold text-gray-800 text-sm">Pesan Masuk</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {unreadCount > 0 ? `${unreadCount} pesan baru` : 'Chat pembeli'}
-                  </p>
-                </button>
-              </div>
+                  {/* 3 ACTIONS GRID: SISA MANAJEMEN TOKO */}
+                  <div className="p-4 bg-white grid grid-cols-3 gap-2.5">
+                    
+                    <button 
+                      onClick={() => navigate('/produk')}
+                      className="border border-slate-100 bg-slate-50/40 hover:bg-slate-50 p-3 rounded-xl text-center active:scale-95 transition-all flex flex-col items-center gap-1.5 group"
+                    >
+                      <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-sm">📦</div>
+                      <span className="text-[11px] font-black text-slate-800 tracking-tight">Katalog Produk</span>
+                    </button>
 
-              <div className={`rounded-2xl p-4 border shadow-sm flex items-center justify-between ${isVerified ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-100'}`}>
-                <div>
-                  <p className="text-sm font-bold text-gray-800">
-                    {isVerified ? '✓ Akun Terverifikasi' : 'Verifikasi Akun'}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {isVerified ? 'Centang biru aktif di profilmu' : 'Dapatkan centang biru untuk kepercayaan lebih'}
-                  </p>
-                </div>
-                {isVerified ? (
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    width: 32, height: 32, background: '#3b82f6', color: 'white',
-                    borderRadius: '50%', fontSize: 16, fontWeight: 'bold', flexShrink: 0,
-                  }}>✓</span>
-                ) : (
-                  <button onClick={() => navigate('/verifikasi')}
-                    className="text-xs bg-blue-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-blue-700 transition flex-shrink-0">
-                    Ajukan →
-                  </button>
-                )}
-              </div>
+                    <button 
+                      onClick={() => navigate('/buat-promo')}
+                      className="border border-slate-100 bg-slate-50/40 hover:bg-slate-50 p-3 rounded-xl text-center active:scale-95 transition-all flex flex-col items-center gap-1.5 group"
+                    >
+                      <div className="w-8 h-8 bg-rose-50 text-rose-500 rounded-lg flex items-center justify-center text-sm">🔥</div>
+                      <span className="text-[11px] font-black text-slate-800 tracking-tight">Pasang Promo</span>
+                    </button>
 
-              {isAdmin && (
-                <button onClick={() => navigate('/admin')}
-                  className="w-full bg-gray-900 rounded-2xl p-4 border border-gray-700 shadow-sm text-left hover:bg-gray-800 transition flex items-center gap-3">
-                  <span className="text-2xl">🛡️</span>
-                  <div>
-                    <p className="font-bold text-white text-sm">Dashboard Admin</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Kelola verifikasi KYC & pengguna</p>
+                    <button 
+                      onClick={() => navigate('/edit-toko')}
+                      className="border border-slate-100 bg-slate-50/40 hover:bg-slate-50 p-3 rounded-xl text-center active:scale-95 transition-all flex flex-col items-center gap-1.5 group"
+                    >
+                      <div className="w-8 h-8 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center text-sm">⚙️</div>
+                      <span className="text-[11px] font-black text-slate-800 tracking-tight">Pengaturan</span>
+                    </button>
+
                   </div>
-                </button>
-              )}
 
-              <button onClick={() => navigate('/buat-toko')}
-                className="w-full border-2 border-dashed border-gray-200 text-gray-400 rounded-2xl py-3.5 text-sm font-bold hover:bg-gray-50 hover:border-green-300 hover:text-green-600 transition">
-                + Daftarkan Toko/Jasa/Preloved Lain
-              </button>
+                  {/* AKSES HAPUS DISKRET DI BAGIAN BAWAH KARTU */}
+                  <div className="bg-slate-50/30 px-4 py-2 border-t border-slate-100/50 flex justify-between items-center">
+                    <span className="text-[10px] font-bold text-slate-400">ID: {t.id.slice(0, 8)}...</span>
+                    <button 
+                      onClick={() => setHapusTarget(t)}
+                      className="text-[10px] font-bold text-rose-400 hover:text-rose-600 transition"
+                    >
+                      🗑️ Hapus Lapak
+                    </button>
+                  </div>
 
-              {/* Hapus toko ini */}
-              <button onClick={() => setHapusTarget(toko)}
-                className="w-full border-2 border-red-100 text-red-500 rounded-2xl py-3 text-xs font-bold hover:bg-red-50 transition">
-                🗑️ Hapus "{toko.nama}"
-              </button>
-            </>
-          ) : (
-            <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 text-center">
-              <div className="text-5xl mb-4">🏪</div>
-              <h2 className="font-extrabold text-gray-900 text-lg mb-2">Belum punya toko</h2>
-              <p className="text-gray-400 text-sm mb-6">Buat toko pertamamu dan mulai berjualan sekarang</p>
-              <button onClick={() => navigate('/buat-toko')}
-                className="bg-green-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-green-700 transition text-sm">
-                + Buat Toko Sekarang
-              </button>
-            </div>
-          )}
-        </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
       </div>
 
-      {/* Modal konfirmasi hapus toko */}
+      {/* MODAL KONFIRMASI HAPUS TOKO */}
       {hapusTarget && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full">
-            <div className="text-center mb-4">
-              <span className="text-4xl block mb-3">⚠️</span>
-              <h3 className="font-extrabold text-gray-900 text-base">Hapus Toko?</h3>
-              <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-                "<strong>{hapusTarget.nama}</strong>" beserta semua produk, pesan, dan promo terkait akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.
+        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl p-6 max-w-sm w-full space-y-5 shadow-2xl border border-slate-100">
+            <div className="text-center space-y-2">
+              <span className="text-4xl block">⚠️</span>
+              <h3 className="font-black text-slate-950 text-base tracking-tight">Hapus Entitas Usaha?</h3>
+              <p className="text-xs text-slate-500 leading-relaxed px-1">
+                Lapak "<strong>{hapusTarget.nama}</strong>" beserta seluruh katalog produk, chat, dan kupon promo akan dieliminasi permanen dari radar aplikasi warga.
               </p>
             </div>
-            <div className="flex gap-2">
-              <button onClick={() => setHapusTarget(null)} disabled={menghapus}
-                className="flex-1 border-2 border-gray-100 text-gray-600 py-3 rounded-xl text-sm font-bold hover:bg-gray-50 transition disabled:opacity-50">
-                Batal
+            <div className="flex gap-3">
+              <button onClick={() => setHapusTarget(null)} disabled={menghapus} className="flex-1 border-2 border-slate-100 text-slate-500 py-3 rounded-xl text-xs font-bold hover:bg-gray-50 transition">
+                Batalkan
               </button>
-              <button onClick={konfirmasiHapusToko} disabled={menghapus}
-                className="flex-1 bg-red-500 text-white py-3 rounded-xl text-sm font-bold hover:bg-red-600 transition disabled:opacity-50">
-                {menghapus ? 'Menghapus...' : 'Ya, Hapus'}
+              <button onClick={konfirmasiHapusToko} disabled={menghapus} className="flex-1 bg-gradient-to-r from-red-600 to-rose-600 text-white py-3 rounded-xl text-xs font-black shadow-md transition disabled:opacity-50">
+                {menghapus ? 'Memproses...' : 'Ya, Hapus'}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* BOTTOM NAV BAR */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-100 flex shadow-[0_-4px_24px_rgba(0,0,0,0.03)] z-40 max-w-md mx-auto pb-safe">
+        <button onClick={() => navigate('/cari')} className="flex-1 py-3.5 flex flex-col items-center gap-1 transition active:scale-95">
+          <span className="text-lg leading-none">🔍</span>
+          <span className="text-[10px] font-bold text-slate-400">Cari</span>
+        </button>
+        <button onClick={() => navigate('/peta')} className="flex-1 py-3.5 flex flex-col items-center gap-1 transition active:scale-95">
+          <span className="text-lg leading-none">🗺️</span>
+          <span className="text-[10px] font-bold text-slate-400">Peta</span>
+        </button>
+        <button onClick={() => navigate('/dashboard')} className="flex-1 py-3.5 flex flex-col items-center gap-1 transition active:scale-95">
+          <span className="text-lg leading-none">🏪</span>
+          <span className="text-[10px] font-black text-emerald-600">Toko</span>
+        </button>
+        <button onClick={() => navigate('/profil')} className="flex-1 py-3.5 flex flex-col items-center gap-1 transition active:scale-95">
+          <span className="text-lg leading-none">👤</span>
+          <span className="text-[10px] font-bold text-slate-400">Profil</span>
+        </button>
+      </div>
+
     </div>
   )
 }

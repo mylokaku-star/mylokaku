@@ -168,14 +168,26 @@ export default function ChatPage() {
     if (error) { toast.error('Gagal kirim pesan') }
     else {
       setInput('')
-      // Trigger push notification via supabase.functions.invoke (handle CORS otomatis)
-      if (!isPenjual) {
-        supabase.functions.invoke('send-push-notification', {
-          body: { toko_id: tokoId, isi_pesan: isiPesan },
-        }).then(({ error }) => {
-          if (error) console.error('Push notification error:', error)
-        })
-      }
+      // Trigger push notification dua arah
+      const targetPembeliId = isPenjual ? selectedPembeli : user.id
+      fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-push-notification`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            toko_id: tokoId,
+            isi_pesan: isiPesan,
+            is_penjual: isPenjual,
+            pembeli_id: targetPembeliId,
+          }),
+        }
+      ).then(async (res) => {
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) console.error('Push error:', data)
+      }).catch((err) => {
+        console.error('Push fetch error:', err)
+      })
     }
   }
 
