@@ -20,6 +20,7 @@ import PusatBantuan from './pages/PusatBantuan'
 import VerifikasiWA from './pages/VerifikasiWA'
 import BuatPromoPage from './pages/BuatPromoPage'
 import KeranjangPage from './pages/KeranjangPage'
+import ChatListPenjualPage from './pages/ChatListPenjualPage' // Pastikan file ini ada
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -27,33 +28,11 @@ function ScrollToTop() {
   return null
 }
 
-function RefreshButton() {
-  const { pathname } = useLocation()
-  if (pathname.startsWith('/chat')) return null
-  return (
-    <button
-      onClick={() => window.location.reload()}
-      style={{
-        position: 'fixed', bottom: '80px', right: '16px',
-        width: '40px', height: '40px', borderRadius: '50%',
-        background: 'white', border: '1.5px solid #e5e7eb',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        cursor: 'pointer', zIndex: 40, fontSize: '16px',
-      }}
-      title="Refresh halaman"
-    >
-      🔄
-    </button>
-  )
-}
-
 function App() {
   return (
     <>
       <Toaster position="top-center" richColors />
       <ScrollToTop />
-      <RefreshButton />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -63,13 +42,16 @@ function App() {
         <Route path="/peta" element={<PetaPage />} />
         <Route path="/toko/:id" element={<DetailTokoPage />} />
         <Route path="/verifikasi-wa" element={<VerifikasiWA />} />
-        <Route path="/preloved" element={<Navigate to="/cari?kategori=preloved" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/buat-toko" element={<BuatTokoPage />} />
-        <Route path="/buat-promo" element={<BuatPromoPage />} />
+        
+        {/* Rute Dinamis dengan :id */}
+        <Route path="/buat-promo/:id" element={<BuatPromoPage />} />
+        <Route path="/edit-toko/:id" element={<EditTokoPage />} />
+        <Route path="/kelola-produk/:id" element={<ProdukPage />} />
+        <Route path="/chat-list-penjual/:id" element={<ChatListPenjualPage />} />
+        
         <Route path="/tambah-produk" element={<TambahProdukPage />} />
-        <Route path="/edit-toko" element={<EditTokoPage />} />
-        <Route path="/produk" element={<ProdukPage />} />
         <Route path="/profil" element={<ProfilPage />} />
         <Route path="/chat/:tokoId" element={<ChatPage />} />
         <Route path="/verifikasi" element={<VerifikasiPage />} />
