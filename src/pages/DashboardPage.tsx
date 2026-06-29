@@ -35,7 +35,6 @@ export default function DashboardPage() {
       const { data: userData } = await supabase.auth.getUser()
       if (!userData.user) { navigate('/login'); return }
 
-      // Cek Cache Profile
       const sekarang = Date.now()
       if (profileCache && (sekarang - profileCacheTime < PROFILE_CACHE_TTL)) {
         setNamaUser(profileCache.nama || '')
@@ -50,7 +49,6 @@ export default function DashboardPage() {
         }
       }
 
-      // Ambil Semua Toko Milik User
       const { data: tokoData } = await supabase
         .from('toko')
         .select('*')
@@ -60,15 +58,18 @@ export default function DashboardPage() {
       const listToko = tokoData || []
       setSemuaToko(listToko)
 
-      // Ambil Total Chat Belum Dibaca
       if (listToko.length > 0) {
-        const tokoIds = listToko.map(t => t.id)
-        const { data: chatData } = await supabase
-          .from('percakapan')
-          .select('penjual_unread')
-          .in('toko_id', tokoIds)
-
-        const totalUnread = (chatData || []).reduce((acc, curr) => acc + (curr.penjual_unread || 0), 0)
+        const tokoIds = listToko.map((t: any) => t.id)
+        let totalUnread = 0
+        await Promise.all(tokoIds.map(async (id: string) => {
+          const { count } = await supabase
+            .from('pesan')
+            .select('*', { count: 'exact', head: true })
+            .eq('toko_id', id)
+            .eq('is_penjual', false)
+            .eq('is_read', false)
+          totalUnread += count || 0
+        }))
         setUnreadCount(totalUnread)
       }
 
@@ -82,14 +83,8 @@ export default function DashboardPage() {
   async function toggleBuka(tokoId: string, currentStatus: boolean) {
     setUpdatingStatusId(tokoId)
     const nextStatus = !currentStatus
-    
-    const { error } = await supabase
-      .from('toko')
-      .update({ is_buka: nextStatus })
-      .eq('id', tokoId)
-
+    const { error } = await supabase.from('toko').update({ is_buka: nextStatus }).eq('id', tokoId)
     setUpdatingStatusId(null)
-
     if (error) {
       toast.error('Gagal mengubah status operasional')
     } else {
@@ -101,19 +96,13 @@ export default function DashboardPage() {
   async function konfirmasiHapusToko() {
     if (!hapusTarget) return
     setMenghapus(true)
-    
-    const { error } = await supabase
-      .from('toko')
-      .delete()
-      .eq('id', hapusTarget.id)
-
+    const { error } = await supabase.from('toko').delete().eq('id', hapusTarget.id)
     setMenghapus(false)
     setHapusTarget(null)
-
     if (error) {
-      toast.error('Gagal menghapus entitas bisnis')
+      toast.error('Gagal menghapus toko')
     } else {
-      toast.success('Entitas bisnis berhasil dihapus secara permanen')
+      toast.success('Toko berhasil dihapus')
       setSemuaToko(prev => prev.filter(t => t.id !== hapusTarget.id))
     }
   }
@@ -157,9 +146,9 @@ export default function DashboardPage() {
             <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center text-3xl mx-auto shadow-inner">🏪</div>
             <div className="space-y-1">
               <h3 className="font-black text-slate-900 text-base">Mulai Buka Usaha & Jasa Kamu</h3>
-              <p className="text-xs text-gray-400 max-w-[280px] mx-auto leading-relaxed">Dapatkan akses pasar lokal langsung dari tetangga sekitar rumah. Daftarkan tokomu atau jasa panggilanmu sekarang!</p>
+              <p className="text-xs text-gray-400 max-w-[280px] mx-auto leading-relaxed">Dapatkan akses pasar lokal langsung dari tetangga sekitar rumah.</p>
             </div>
-            <button 
+            <button
               onClick={() => navigate('/buat-toko')}
               className="w-full bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-extrabold text-xs py-3.5 rounded-2xl shadow-md shadow-green-900/10 active:scale-98 transition-all"
             >
@@ -169,8 +158,8 @@ export default function DashboardPage() {
         ) : (
           <div className="space-y-5">
             <div className="flex justify-between items-center pl-1">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Daftar Entitas Bisnis Terdaftar ({semuaToko.length})</p>
-              <button 
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Daftar Toko ({semuaToko.length})</p>
+              <button
                 onClick={() => navigate('/buat-toko')}
                 className="text-[11px] font-extrabold text-green-700 bg-green-50 px-2.5 py-1 rounded-full border border-green-100 hover:bg-green-100 transition"
               >
@@ -184,9 +173,7 @@ export default function DashboardPage() {
                   t.is_buka ? 'bg-emerald-50/60 border-emerald-100/50' : 'bg-gray-50 border-gray-100'
                 }`}>
                   <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <div className={`w-3 h-3 rounded-full ${t.is_buka ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`}></div>
-                    </div>
+                    <div className={`w-3 h-3 rounded-full ${t.is_buka ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`}></div>
                     <div>
                       <h2 className="font-black text-sm text-gray-900 leading-tight">{t.nama}</h2>
                       <p className="text-[11px] text-gray-400 mt-0.5 font-semibold uppercase tracking-wider">
@@ -203,11 +190,12 @@ export default function DashboardPage() {
                   >
                     {updatingStatusId === t.id ? (
                       <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                    ) : t.is_buka ? ('🟢 Buka') : ('🔴 Tutup')}
+                    ) : t.is_buka ? '🟢 Buka' : '🔴 Tutup'}
                   </button>
                 </div>
 
                 <div className="grid grid-cols-2 divide-x divide-gray-100 border-b border-gray-50 bg-white">
+                  {/* ← FIX: navigate ke /chat/:id bukan /chat-list-penjual/:id */}
                   <button onClick={() => navigate(`/chat/${t.id}`)} className="p-3.5 text-center hover:bg-gray-50/50 transition flex flex-col items-center justify-center gap-0.5 group">
                     <div className="flex items-center gap-1.5">
                       <span className="text-sm">💬</span>
@@ -230,6 +218,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="p-4 bg-white grid grid-cols-2 gap-3">
+                  {/* ← FIX: /produk?toko= bukan /kelola-produk/:id */}
                   <button onClick={() => navigate(`/produk?toko=${t.id}`)} className="border border-gray-100 bg-slate-50/50 hover:bg-slate-50 p-3.5 rounded-2xl text-left active:scale-95 transition-all flex flex-col gap-2">
                     <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-sm shadow-inner">📦</div>
                     <div>
@@ -237,13 +226,17 @@ export default function DashboardPage() {
                       <p className="text-[10px] text-gray-400 font-medium mt-0.5">Atur menu barang / jasa</p>
                     </div>
                   </button>
+
+                  {/* ← FIX: /buat-promo bukan /buat-promo/:id */}
                   <button onClick={() => navigate('/buat-promo')} className="border border-gray-100 bg-slate-50/50 hover:bg-slate-50 p-3.5 rounded-2xl text-left active:scale-95 transition-all flex flex-col gap-2">
                     <div className="w-8 h-8 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center text-sm shadow-inner">🔥</div>
                     <div>
                       <h4 className="text-xs font-black text-gray-900">Buat Promo</h4>
                       <p className="text-[10px] text-gray-400 font-medium mt-0.5">Siar diskon di papan warga</p>
-                    </div>onClick={() => navigate(`/chat/${t.id}`)}
+                    </div>
                   </button>
+
+                  {/* ← FIX: /edit-toko?toko= bukan /edit-toko/:id */}
                   <button onClick={() => navigate(`/edit-toko?toko=${t.id}`)} className="border border-gray-100 bg-slate-50/50 hover:bg-slate-50 p-3.5 rounded-2xl text-left active:scale-95 transition-all flex flex-col gap-2">
                     <div className="w-8 h-8 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center text-sm shadow-inner">⚙️</div>
                     <div>
@@ -251,6 +244,7 @@ export default function DashboardPage() {
                       <p className="text-[10px] text-gray-400 font-medium mt-0.5">Ubah banner, jam, & lokasi</p>
                     </div>
                   </button>
+
                   <button onClick={() => setHapusTarget(t)} className="border border-red-50 bg-red-50/20 hover:bg-red-50/50 p-3.5 rounded-2xl text-left active:scale-95 transition-all flex flex-col gap-2">
                     <div className="w-8 h-8 bg-red-50 text-red-500 rounded-xl flex items-center justify-center text-sm shadow-inner">🗑️</div>
                     <div>
@@ -266,18 +260,18 @@ export default function DashboardPage() {
       </div>
 
       {hapusTarget && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4">
           <div className="bg-white rounded-t-3xl sm:rounded-3xl p-6 max-w-sm w-full space-y-5 shadow-2xl">
             <div className="text-center space-y-2">
               <span className="text-4xl block animate-bounce">⚠️</span>
               <h3 className="font-black text-gray-900 text-base">Konfirmasi Hapus Toko?</h3>
               <p className="text-xs text-gray-500 leading-relaxed px-2">
-                Entitas bisnis "<strong>{hapusTarget.nama}</strong>" beserta semua katalog produk, histori obrolan chat, dan siaran promo warga akan dihapus secara permanen.
+                Toko "<strong>{hapusTarget.nama}</strong>" beserta semua produk, chat, dan promo akan dihapus permanen.
               </p>
             </div>
             <div className="flex gap-3">
               <button onClick={() => setHapusTarget(null)} disabled={menghapus} className="flex-1 border-2 border-gray-100 text-gray-500 py-3 rounded-xl text-xs font-bold hover:bg-gray-50 transition disabled:opacity-50">Batalkan</button>
-              <button onClick={konfirmasiHapusToko} disabled={menghapus} className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl text-xs font-black shadow-md shadow-red-900/10 transition disabled:opacity-50 flex items-center justify-center">
+              <button onClick={konfirmasiHapusToko} disabled={menghapus} className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl text-xs font-black shadow-md transition disabled:opacity-50 flex items-center justify-center">
                 {menghapus ? 'Memproses...' : 'Ya, Hapus'}
               </button>
             </div>

@@ -49,11 +49,11 @@ function App() {
         <Route path="/verifikasi-wa" element={<VerifikasiWA />} />
         <Route path="/preloved" element={<Navigate to="/cari?kategori=preloved" replace />} />
 
-        {/* Redirect route lama ke route baru yang konsisten */}
+        {/* Redirect route lama ke dashboard */}
+        <Route path="/chat-list-penjual/:id" element={<Navigate to="/dashboard" replace />} />
         <Route path="/edit-toko/:id" element={<Navigate to="/edit-toko" replace />} />
         <Route path="/kelola-produk/:id" element={<Navigate to="/produk" replace />} />
         <Route path="/buat-promo/:id" element={<Navigate to="/buat-promo" replace />} />
-        <Route path="/chat-list-penjual/:id" element={<Navigate to="/dashboard" replace />} />
 
         {/* Perlu login */}
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
