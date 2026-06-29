@@ -208,7 +208,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="grid grid-cols-2 divide-x divide-gray-100 border-b border-gray-50 bg-white">
-                  <button onClick={() => navigate(`/chat-list-penjual/${t.id}`)} className="p-3.5 text-center hover:bg-gray-50/50 transition flex flex-col items-center justify-center gap-0.5 group">
+                  <button onClick={() => navigate(`/chat/${t.id}`)} className="p-3.5 text-center hover:bg-gray-50/50 transition flex flex-col items-center justify-center gap-0.5 group">
                     <div className="flex items-center gap-1.5">
                       <span className="text-sm">💬</span>
                       <span className={`text-sm font-black ${unreadCount > 0 ? 'text-orange-500' : 'text-gray-800'}`}>
@@ -230,21 +230,21 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="p-4 bg-white grid grid-cols-2 gap-3">
-                  <button onClick={() => navigate(`/kelola-produk/${t.id}`)} className="border border-gray-100 bg-slate-50/50 hover:bg-slate-50 p-3.5 rounded-2xl text-left active:scale-95 transition-all flex flex-col gap-2">
+                  <button onClick={() => navigate(`/produk?toko=${t.id}`)} className="border border-gray-100 bg-slate-50/50 hover:bg-slate-50 p-3.5 rounded-2xl text-left active:scale-95 transition-all flex flex-col gap-2">
                     <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-sm shadow-inner">📦</div>
                     <div>
                       <h4 className="text-xs font-black text-gray-900">Kelola Produk</h4>
                       <p className="text-[10px] text-gray-400 font-medium mt-0.5">Atur menu barang / jasa</p>
                     </div>
                   </button>
-                  <button onClick={() => navigate(`/buat-promo/${t.id}`)} className="border border-gray-100 bg-slate-50/50 hover:bg-slate-50 p-3.5 rounded-2xl text-left active:scale-95 transition-all flex flex-col gap-2">
+                  <button onClick={() => navigate('/buat-promo')} className="border border-gray-100 bg-slate-50/50 hover:bg-slate-50 p-3.5 rounded-2xl text-left active:scale-95 transition-all flex flex-col gap-2">
                     <div className="w-8 h-8 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center text-sm shadow-inner">🔥</div>
                     <div>
                       <h4 className="text-xs font-black text-gray-900">Buat Promo</h4>
                       <p className="text-[10px] text-gray-400 font-medium mt-0.5">Siar diskon di papan warga</p>
-                    </div>
+                    </div>onClick={() => navigate(`/chat/${t.id}`)}
                   </button>
-                  <button onClick={() => navigate(`/edit-toko/${t.id}`)} className="border border-gray-100 bg-slate-50/50 hover:bg-slate-50 p-3.5 rounded-2xl text-left active:scale-95 transition-all flex flex-col gap-2">
+                  <button onClick={() => navigate(`/edit-toko?toko=${t.id}`)} className="border border-gray-100 bg-slate-50/50 hover:bg-slate-50 p-3.5 rounded-2xl text-left active:scale-95 transition-all flex flex-col gap-2">
                     <div className="w-8 h-8 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center text-sm shadow-inner">⚙️</div>
                     <div>
                       <h4 className="text-xs font-black text-gray-900">Edit Toko</h4>

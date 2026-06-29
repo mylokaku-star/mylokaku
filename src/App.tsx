@@ -53,7 +53,7 @@ function App() {
         <Route path="/edit-toko/:id" element={<Navigate to="/edit-toko" replace />} />
         <Route path="/kelola-produk/:id" element={<Navigate to="/produk" replace />} />
         <Route path="/buat-promo/:id" element={<Navigate to="/buat-promo" replace />} />
-        <Route path="/chat-list-penjual/:id" element={<Navigate to={'/chat/:id'.replace(':id', '')} replace />} />
+        <Route path="/chat-list-penjual/:id" element={<Navigate to="/dashboard" replace />} />
 
         {/* Perlu login */}
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
