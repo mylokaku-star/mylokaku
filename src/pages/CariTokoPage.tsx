@@ -166,7 +166,7 @@ function ProdukCard({ p, userLat, userLng, onDetail, onChat, isWishlisted, onTog
           </div>
           {onTambahKeranjang && (
             <button
-              onClick={() => onTambahKeranjang(p.id, p.toko_id)}
+              onClick={(e) => { e.stopPropagation(); onTambahKeranjang(p.id, p.toko_id) }}
               className="w-full bg-red-500 hover:bg-red-600 text-white text-[11px] py-2 rounded-xl font-bold border-none cursor-pointer transition-colors flex items-center justify-center gap-1">
               🛒 + Keranjang
             </button>
