@@ -30,7 +30,6 @@ export default function DetailTokoPage() {
     const uid = userData.user?.id || null
     setUserId(uid)
 
-    // Fetch data toko
     const { data: tokoData, error: tokoError } = await supabase
       .from('toko')
       .select('*')
@@ -44,7 +43,6 @@ export default function DetailTokoPage() {
     }
     setToko(tokoData)
 
-    // Fetch produk & promo paralel
     const [{ data: produkData }, { data: promoData }] = await Promise.all([
       supabase.from('produk').select('*').eq('toko_id', id).order('created_at', { ascending: false }),
       supabase.from('promo').select('*').eq('toko_id', id).order('created_at', { ascending: false })
@@ -53,7 +51,6 @@ export default function DetailTokoPage() {
     setProduk(produkData || [])
     setPromo(promoData || [])
 
-    // Cek status langganan & wishlist jika user login
     if (uid) {
       const [{ data: followData }, { data: wishData }] = await Promise.all([
         supabase.from('langganan_toko').select('id').eq('user_id', uid).eq('toko_id', id).maybeSingle(),
@@ -114,7 +111,6 @@ export default function DetailTokoPage() {
   return (
     <div className="min-h-screen bg-[#F6F9F8] pb-28 text-slate-900 font-medium antialiased">
       
-      {/* Banner & Cover Section */}
       <div className="relative max-w-md mx-auto bg-white border-b border-gray-100 shadow-sm">
         <div className="h-36 w-full bg-slate-100 relative overflow-hidden">
           {toko?.foto_url ? (
@@ -127,7 +123,6 @@ export default function DetailTokoPage() {
           </button>
         </div>
 
-        {/* Profile Info Card */}
         <div className="px-4 pb-4 -mt-12 relative z-10 flex flex-col items-center text-center">
           {toko?.foto_url ? (
             <img src={toko.foto_url} alt={toko.nama} className="w-24 h-24 rounded-3xl object-cover ring-4 ring-white shadow-md bg-white block" />
@@ -153,25 +148,24 @@ export default function DetailTokoPage() {
             {toko?.deskripsi && <p className="text-xs text-slate-500 font-medium leading-relaxed mt-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100/60">{toko.deskripsi}</p>}
           </div>
 
-          {/* Action Header Button */}
           <div className="w-full grid grid-cols-2 gap-2 mt-4 max-w-xs">
             <button onClick={toggleFollow} className={`w-full text-xs py-3 rounded-xl font-black transition active:scale-95 border border-transparent shadow-sm flex items-center justify-center gap-1.5 ${
               isFollowed ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : `${configTema.bg} text-white ${configTema.hover}`
             }`}>
               {isFollowed ? '❤️ Diikuti' : '🤍 Ikuti'}
             </button>
-            <a href={`https://wa.me/${toko?.whatsapp?.replace(/\D/g, '').replace(/^0/, '62')}`} target="_blank" rel="noreferrer" 
-               className="w-full text-xs py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black transition active:scale-95 shadow-sm text-center flex items-center justify-center gap-1.5">
-              💬 WhatsApp
-            </a>
+            {toko?.telepon && (
+              <a href={`https://wa.me/${toko.telepon.replace(/\D/g, '').replace(/^0/, '62')}`} target="_blank" rel="noreferrer" 
+                 className="w-full text-xs py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black transition active:scale-95 shadow-sm text-center flex items-center justify-center gap-1.5">
+                💬 WhatsApp
+              </a>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Main Grid Content */}
       <div className="max-w-md mx-auto p-4 space-y-6">
         
-        {/* PROMO BANNER SECTION */}
         {promo.length > 0 && (
           <div className="space-y-2">
             <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Promo Khusus Toko 🎉</h2>
@@ -194,7 +188,6 @@ export default function DetailTokoPage() {
           </div>
         )}
 
-        {/* LIST PRODUK / LAYANAN JASA */}
         <div className="space-y-3">
           <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">
             {toko?.jenis === 'jasa' ? 'Layanan & Jasa' : 'Katalog Produk'} ({produk.length})
@@ -239,7 +232,6 @@ export default function DetailTokoPage() {
         </div>
       </div>
 
-      {/* Bottom Navigation Menu */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-100 flex shadow-[0_-4px_24px_rgba(0,0,0,0.04)] z-40 max-w-md mx-auto pb-safe">
         <button onClick={() => navigate('/cari')} className="flex-1 py-3.5 flex flex-col items-center gap-1 transition active:scale-95">
           <span className="text-lg leading-none">🔍</span>
