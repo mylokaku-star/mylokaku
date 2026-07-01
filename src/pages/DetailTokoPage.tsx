@@ -91,6 +91,20 @@ export default function DetailTokoPage() {
     setWishlistIds(next)
   }
 
+  async function tambahKeranjang(produkId: string) {
+    if (!userId) { toast.error('Silakan login terlebih dahulu'); navigate('/login'); return }
+    const { data: existing } = await supabase.from('keranjang')
+      .select('id, jumlah').eq('user_id', userId).eq('produk_id', produkId).maybeSingle()
+    if (existing) {
+      await supabase.from('keranjang').update({ jumlah: existing.jumlah + 1 }).eq('id', existing.id)
+    } else {
+      await supabase.from('keranjang').insert({ user_id: userId, produk_id: produkId, toko_id: id, jumlah: 1 })
+    }
+    toast.success('Ditambahkan ke keranjang!', {
+      action: { label: 'Lihat', onClick: () => navigate('/keranjang') }
+    })
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-3 animate-pulse">
@@ -221,9 +235,14 @@ export default function DetailTokoPage() {
                       {p.deskripsi && <p className="text-[10px] text-slate-400 line-clamp-2 leading-relaxed mt-1 font-medium">{p.deskripsi}</p>}
                     </div>
 
-                    <button onClick={() => navigate(`/chat/${id}`)} className={`w-full text-[10px] py-2 rounded-xl font-black text-center border active:scale-95 transition shadow-sm bg-orange-500 text-white hover:bg-orange-600 border-transparent shadow-orange-900/10`}>
-                      Pesan Sekarang 💬
-                    </button>
+                    <div className="flex flex-col gap-1.5">
+                      <button onClick={() => tambahKeranjang(p.id)} className="w-full text-[10px] py-2 rounded-xl font-black text-center border active:scale-95 transition shadow-sm bg-red-500 text-white hover:bg-red-600 border-transparent flex items-center justify-center gap-1">
+                        🛒 + Keranjang
+                      </button>
+                      <button onClick={() => navigate(`/chat/${id}`)} className={`w-full text-[10px] py-2 rounded-xl font-black text-center border active:scale-95 transition shadow-sm bg-orange-500 text-white hover:bg-orange-600 border-transparent shadow-orange-900/10`}>
+                        Pesan Sekarang 💬
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
