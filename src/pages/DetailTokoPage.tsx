@@ -1,495 +1,264 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { KATEGORI_TOKO, KATEGORI_JASA, KATEGORI_PRELOVED } from '../lib/kategori'
-import PromoSlider from '../components/PromoSlider'
+import { toast } from 'sonner'
 
-function hitungJarak(lat1: number, lng1: number, lat2: number, lng2: number) {
-  const R = 6371
-  const dLat = ((lat2 - lat1) * Math.PI) / 180
-  const dLng = ((lng2 - lng1) * Math.PI) / 180
-  const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos((lat1*Math.PI)/180)*Math.cos((lat2*Math.PI)/180)*Math.sin(dLng/2)*Math.sin(dLng/2)
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
-}
-function formatJarak(km: number) { return km < 1 ? `${Math.round(km*1000)} m` : `${km.toFixed(1)} km` }
-function formatHarga(harga: number) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(harga) }
-
-type JenisFilter = 'semua' | 'toko' | 'jasa' | 'preloved' | 'favorit'
-
-const JENIS_CONFIG: Record<JenisFilter, { icon: string; label: string; activeBg: string }> = {
-  semua:    { icon: '🏠', label: 'Semua',    activeBg: 'bg-green-600 text-white border-green-600' },
-  toko:     { icon: '🏪', label: 'Toko',     activeBg: 'bg-green-600 text-white border-green-600' },
-  jasa:     { icon: '🛠️', label: 'Jasa',     activeBg: 'bg-blue-600 text-white border-blue-600' },
-  preloved: { icon: '♻️', label: 'Preloved', activeBg: 'bg-purple-600 text-white border-purple-600' },
-  favorit:  { icon: '❤️', label: 'Favorit',  activeBg: 'bg-red-500 text-white border-red-500' },
+function formatHarga(harga: number) {
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(harga)
 }
 
-function getJenisInfo(t: any) {
-  if (t.jenis === 'jasa') return {
-    label: 'Jasa', status: 'TERSEDIA',
-    badgeStyle: { background: '#dbeafe', color: '#1d4ed8' },
-    cardGradient: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
-    primaryBtnStyle: { background: '#2563eb', color: 'white' },
-    secondaryBtnStyle: { background: '#f97316', color: 'white' },
-  }
-  if (t.jenis === 'preloved') return {
-    label: 'Preloved', status: 'DIJUAL',
-    badgeStyle: { background: '#f3e8ff', color: '#7c3aed' },
-    cardGradient: 'linear-gradient(135deg, #faf5ff, #f3e8ff)',
-    primaryBtnStyle: { background: '#9333ea', color: 'white' },
-    secondaryBtnStyle: { background: '#f97316', color: 'white' },
-  }
-  return {
-    label: 'Toko', status: 'BUKA',
-    badgeStyle: { background: '#dcfce7', color: '#15803d' },
-    cardGradient: 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
-    primaryBtnStyle: { background: '#16a34a', color: 'white' },
-    secondaryBtnStyle: { background: '#f97316', color: 'white' },
-  }
-}
-
-function getIconKategori(jenis: JenisFilter, contohToko?: any) {
-  if (jenis !== 'semua' && jenis !== 'favorit') return JENIS_CONFIG[jenis].icon
-  if (contohToko?.jenis === 'jasa') return '🛠️'
-  if (contohToko?.jenis === 'preloved') return '♻️'
-  return '🏪'
-}
-
-function TokoCard({ t, userLat, userLng, onDetail, onChat, isFollowed, onToggleFollow }: {
-  t: any; userLat: number | null; userLng: number | null
-  onDetail: (id: string) => void; onChat: (id: string) => void
-  isFollowed: boolean; onToggleFollow: ((id: string) => void) | null
-}) {
-  const info = getJenisInfo(t)
-  const jarak = userLat && userLng && t.lat && t.lng ? hitungJarak(userLat, userLng, t.lat, t.lng) : null
-  return (
-    <div style={{ width: '200px', flexShrink: 0, background: 'white', borderRadius: '16px', border: '1px solid #f1f5f9', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ position: 'relative' }}>
-        {t.foto_url ? (
-          <img src={t.foto_url} alt={t.nama} style={{ width: '100%', height: '112px', objectFit: 'cover', display: 'block' }} />
-        ) : (
-          <div style={{ width: '100%', height: '112px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', background: info.cardGradient }}>
-            {t.jenis === 'jasa' ? '🛠️' : t.jenis === 'preloved' ? '♻️' : '🏪'}
-          </div>
-        )}
-        {onToggleFollow && (
-          <button onClick={(e) => { e.stopPropagation(); onToggleFollow(t.id) }}
-            style={{ position: 'absolute', top: '6px', right: '6px', background: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.15)', fontSize: '14px' }}>
-            {isFollowed ? '❤️' : '🤍'}
-          </button>
-        )}
-      </div>
-      <div style={{ padding: '10px 10px 6px', flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '4px' }}>
-          <span style={{ fontWeight: 700, fontSize: '11px', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }} title={t.nama}>{t.nama}</span>
-          <span style={{ ...info.badgeStyle, fontSize: '9px', padding: '2px 6px', borderRadius: '999px', fontWeight: 800, flexShrink: 0 }}>{info.status}</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#9ca3af', fontWeight: 500 }}>
-          <span>{info.label}</span>
-          {jarak !== null && <span>📍 {formatJarak(jarak)}</span>}
-        </div>
-        {t.alamat && <p style={{ fontSize: '10px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📍 {t.alamat}</p>}
-      </div>
-      <div style={{ padding: '0 10px 10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-        <button onClick={() => onDetail(t.id)} style={{ ...info.primaryBtnStyle, fontSize: '11px', padding: '7px 0', borderRadius: '10px', fontWeight: 700, border: 'none', cursor: 'pointer', textAlign: 'center' }}>
-          {t.jenis === 'jasa' ? 'Detail' : 'Toko'}
-        </button>
-        <button onClick={() => onChat(t.id)} style={{ ...info.secondaryBtnStyle, fontSize: '11px', padding: '7px 0', borderRadius: '10px', fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
-          Chat 💬
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function ProdukCard({ p, userLat, userLng, onDetail, onChat, isWishlisted, onToggleWishlist }: {
-  p: any; userLat: number | null; userLng: number | null
-  onDetail: (id: string) => void; onChat: (id: string) => void
-  isWishlisted: boolean; onToggleWishlist: ((produkId: string, tokoId: string) => void) | null
-}) {
-  const jarak = userLat && userLng && p.toko?.lat && p.toko?.lng ? hitungJarak(userLat, userLng, p.toko.lat, p.toko.lng) : null
-  return (
-    <div style={{ width: '160px', flexShrink: 0, background: 'white', borderRadius: '16px', border: '1px solid #f1f5f9', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ position: 'relative' }}>
-        {p.foto_url ? (
-          <img src={p.foto_url} alt={p.nama} style={{ width: '100%', height: '120px', objectFit: 'cover', display: 'block' }} />
-        ) : (
-          <div style={{ width: '100%', height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', background: 'linear-gradient(135deg, #faf5ff, #f3e8ff)' }}>♻️</div>
-        )}
-        {onToggleWishlist && (
-          <button onClick={(e) => { e.stopPropagation(); onToggleWishlist(p.id, p.toko_id) }}
-            style={{ position: 'absolute', top: '6px', right: '6px', background: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.15)', fontSize: '14px' }}>
-            {isWishlisted ? '❤️' : '🤍'}
-          </button>
-        )}
-      </div>
-      <div style={{ padding: '8px 8px 4px', flex: 1, display: 'flex', flexDirection: 'column', gap: '3px' }}>
-        <span style={{ fontWeight: 700, fontSize: '11px', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.nama}>{p.nama}</span>
-        <span style={{ fontWeight: 800, fontSize: '12px', color: '#7c3aed' }}>{formatHarga(p.harga)}</span>
-        <span style={{ fontSize: '10px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🏪 {p.toko?.nama || '-'}</span>
-        {jarak !== null && <span style={{ fontSize: '10px', color: '#9ca3af' }}>📍 {formatJarak(jarak)}</span>}
-      </div>
-      <div style={{ padding: '0 8px 8px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px' }}>
-        <button onClick={() => onDetail(p.toko_id)} style={{ background: '#9333ea', color: 'white', fontSize: '10px', padding: '6px 0', borderRadius: '8px', fontWeight: 700, border: 'none', cursor: 'pointer' }}>Detail</button>
-        <button onClick={() => onChat(p.toko_id)} style={{ background: '#f97316', color: 'white', fontSize: '10px', padding: '6px 0', borderRadius: '8px', fontWeight: 700, border: 'none', cursor: 'pointer' }}>Chat 💬</button>
-      </div>
-    </div>
-  )
-}
-
-function ScrollStrip({ children, title, icon, count }: {
-  children: React.ReactNode; title: string; icon: string; count: number
-}) {
-  return (
-    <section style={{ marginBottom: '8px' }}>
-      <div style={{ padding: '0 16px', marginBottom: '8px' }}>
-        <h2 style={{ fontSize: '13px', fontWeight: 700, color: '#1f2937', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
-          <span>{icon}</span>{title}<span style={{ fontSize: '11px', fontWeight: 400, color: '#9ca3af' }}>({count})</span>
-        </h2>
-      </div>
-      <div style={{ overflowX: 'auto', width: '100vw', WebkitOverflowScrolling: 'touch' as any, msOverflowStyle: 'none' as any, scrollbarWidth: 'none' as any }}>
-        <div style={{ display: 'flex', gap: '12px', paddingLeft: '16px', paddingRight: '24px', minWidth: 'max-content' }}>
-          {children}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function SkeletonStrip() {
-  return (
-    <section style={{ marginBottom: '8px' }}>
-      <div style={{ padding: '0 16px', marginBottom: '8px' }}>
-        <div style={{ height: '14px', background: '#e5e7eb', borderRadius: '6px', width: '30%' }} />
-      </div>
-      <div style={{ overflowX: 'auto', width: '100vw' }}>
-        <div style={{ display: 'flex', gap: '12px', paddingLeft: '16px', paddingRight: '24px', minWidth: 'max-content' }}>
-          {[1,2,3].map(i => <div key={i} style={{ width: '160px', flexShrink: 0, height: '200px', background: '#e5e7eb', borderRadius: '16px' }} />)}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-export default function CariTokoPage() {
+export default function DetailTokoPage() {
+  const { id } = useParams()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const [toko, setToko] = useState<any[]>([])
-  const [produkPreloved, setProdukPreloved] = useState<any[]>([])
-  const [filtered, setFiltered] = useState<any[]>([])
-  const [filteredProduk, setFilteredProduk] = useState<any[]>([])
-  const [search, setSearch] = useState('')
-  const [kategori, setKategori] = useState('')
-  const [jenis, setJenis] = useState<JenisFilter>(() => {
-    const param = searchParams.get('kategori')
-    if (param === 'preloved' || param === 'toko' || param === 'jasa') return param
-    return 'semua'
-  })
+  const [toko, setToko] = useState<any>(null)
+  const [produk, setProduk] = useState<any[]>([])
+  const [promo, setPromo] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [userLat, setUserLat] = useState<number | null>(null)
-  const [userLng, setUserLng] = useState<number | null>(null)
-  const [sortByJarak, setSortByJarak] = useState(false)
-  const [showKategori, setShowKategori] = useState(false)
+  const [isFollowed, setIsFollowed] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
-  const [followedIds, setFollowedIds] = useState<Set<string>>(new Set())
   const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set())
-  const [tokoFavorit, setTokoFavorit] = useState<any[]>([])
-  const [produkWishlist, setProdukWishlist] = useState<any[]>([])
 
   useEffect(() => {
-    navigator.geolocation.getCurrentPosition(
-      pos => { setUserLat(pos.coords.latitude); setUserLng(pos.coords.longitude) },
-      () => {}
-    )
-    loadData()
-  }, [])
+    if (id) {
+      loadDetailToko()
+    }
+  }, [id])
 
-  useEffect(() => { filter() }, [search, kategori, jenis, toko, produkPreloved, sortByJarak, userLat, userLng])
-  useEffect(() => { setKategori('') }, [jenis])
-
-  async function loadData() {
+  async function loadDetailToko() {
+    setLoading(true)
     const { data: userData } = await supabase.auth.getUser()
     const uid = userData.user?.id || null
     setUserId(uid)
 
-    const [{ data: tokoData }, { data: produkData }] = await Promise.all([
-      supabase.from('toko').select('*').eq('is_buka', true).in('jenis', ['toko', 'jasa', 'preloved']).order('created_at', { ascending: false }),
-      supabase.from('produk').select('id, nama, harga, deskripsi, foto_url, kategori, toko_id, toko:toko_id(id, nama, lat, lng, alamat, is_buka, jenis)').order('created_at', { ascending: false }),
+    // Fetch data toko
+    const { data: tokoData, error: tokoError } = await supabase
+      .from('toko')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (tokoError || !tokoData) {
+      toast.error('Toko tidak ditemukan atau telah dihapus')
+      navigate('/cari')
+      return
+    }
+    setToko(tokoData)
+
+    // Fetch produk & promo paralel
+    const [{ data: produkData }, { data: promoData }] = await Promise.all([
+      supabase.from('produk').select('*').eq('toko_id', id).order('created_at', { ascending: false }),
+      supabase.from('promo').select('*').eq('toko_id', id).order('created_at', { ascending: false })
     ])
 
-    const allToko = tokoData || []
-    const produkAktif = (produkData || []).filter((p: any) => p.toko?.jenis === 'preloved' && p.toko?.is_buka === true)
-    setToko(allToko)
-    setProdukPreloved(produkAktif)
+    setProduk(produkData || [])
+    setPromo(promoData || [])
 
-    if (uid) await loadFavorit(uid, allToko, produkAktif)
+    // Cek status langganan & wishlist jika user login
+    if (uid) {
+      const [{ data: followData }, { data: wishData }] = await Promise.all([
+        supabase.from('langganan_toko').select('id').eq('user_id', uid).eq('toko_id', id).maybeSingle(),
+        supabase.from('wishlist_produk').select('produk_id').eq('user_id', uid).eq('toko_id', id)
+      ])
+      setIsFollowed(!!followData)
+      setWishlistIds(new Set((wishData || []).map((w: any) => w.produk_id)))
+    }
+
     setLoading(false)
   }
 
-  async function loadFavorit(uid: string, allToko: any[], allProduk: any[]) {
-    const [{ data: followData }, { data: wishData }] = await Promise.all([
-      supabase.from('langganan_toko').select('toko_id').eq('user_id', uid),
-      supabase.from('wishlist_produk').select('produk_id').eq('user_id', uid),
-    ])
-    const fids = new Set((followData || []).map((f: any) => f.toko_id as string))
-    const wids = new Set((wishData || []).map((w: any) => w.produk_id as string))
-    setFollowedIds(fids)
-    setWishlistIds(wids)
-    setTokoFavorit(allToko.filter((t: any) => fids.has(t.id)))
-    setProdukWishlist(allProduk.filter((p: any) => wids.has(p.id)))
-  }
-
-  async function toggleFollow(tokoId: string) {
-    if (!userId) { navigate('/login'); return }
-    if (followedIds.has(tokoId)) {
-      await supabase.from('langganan_toko').delete().eq('user_id', userId).eq('toko_id', tokoId)
-      const next = new Set(followedIds); next.delete(tokoId)
-      setFollowedIds(next)
-      setTokoFavorit(prev => prev.filter((t: any) => t.id !== tokoId))
+  async function toggleFollow() {
+    if (!userId) { toast.error('Silakan login terlebih dahulu'); navigate('/login'); return }
+    if (isFollowed) {
+      await supabase.from('langganan_toko').delete().eq('user_id', userId).eq('toko_id', id)
+      setIsFollowed(false)
+      toast.success('Batal mengikuti toko')
     } else {
-      await supabase.from('langganan_toko').insert({ user_id: userId, toko_id: tokoId })
-      const next = new Set(followedIds); next.add(tokoId)
-      setFollowedIds(next)
-      const t = toko.find((t: any) => t.id === tokoId)
-      if (t) setTokoFavorit(prev => [...prev, t])
+      await supabase.from('langganan_toko').insert({ user_id: userId, toko_id: id })
+      setIsFollowed(true)
+      toast.success('Berhasil mengikuti toko ❤️')
     }
   }
 
-  async function toggleWishlist(produkId: string, tokoId: string) {
-    if (!userId) { navigate('/login'); return }
-    if (wishlistIds.has(produkId)) {
+  async function toggleWishlist(produkId: string) {
+    if (!userId) { toast.error('Silakan login terlebih dahulu'); navigate('/login'); return }
+    const next = new Set(wishlistIds)
+    if (next.has(produkId)) {
       await supabase.from('wishlist_produk').delete().eq('user_id', userId).eq('produk_id', produkId)
-      const next = new Set(wishlistIds); next.delete(produkId)
-      setWishlistIds(next)
-      setProdukWishlist(prev => prev.filter((p: any) => p.id !== produkId))
+      next.delete(produkId)
+      toast.success('Dihapus dari wishlist')
     } else {
-      await supabase.from('wishlist_produk').insert({ user_id: userId, produk_id: produkId, toko_id: tokoId })
-      const next = new Set(wishlistIds); next.add(produkId)
-      setWishlistIds(next)
-      const p = produkPreloved.find((p: any) => p.id === produkId)
-      if (p) setProdukWishlist(prev => [...prev, p])
+      await supabase.from('wishlist_produk').insert({ user_id: userId, produk_id: produkId, toko_id: id })
+      next.add(produkId)
+      toast.success('Ditambahkan ke wishlist ❤️')
     }
+    setWishlistIds(next)
   }
 
-  function filter() {
-    let hasilToko = [...toko]
-    if (jenis === 'toko') hasilToko = hasilToko.filter((t: any) => !t.jenis || t.jenis === 'toko')
-    else if (jenis === 'jasa') hasilToko = hasilToko.filter((t: any) => t.jenis === 'jasa')
-    else if (jenis === 'preloved' || jenis === 'favorit') hasilToko = []
-    else hasilToko = hasilToko.filter((t: any) => t.jenis !== 'preloved')
-    if (search && jenis !== 'preloved' && jenis !== 'favorit')
-      hasilToko = hasilToko.filter((t: any) => t.nama?.toLowerCase().includes(search.toLowerCase()) || t.kategori?.toLowerCase().includes(search.toLowerCase()))
-    if (kategori && jenis !== 'preloved' && jenis !== 'favorit')
-      hasilToko = hasilToko.filter((t: any) => t.kategori === kategori)
-    if (sortByJarak && userLat && userLng && jenis !== 'preloved' && jenis !== 'favorit')
-      hasilToko = hasilToko.map((t: any) => ({ ...t, jarak: t.lat && t.lng ? hitungJarak(userLat, userLng, t.lat, t.lng) : 9999 })).sort((a: any, b: any) => a.jarak - b.jarak)
-    setFiltered(hasilToko)
-
-    let hasilProduk = [...produkPreloved]
-    if (jenis !== 'preloved' && jenis !== 'semua' && jenis !== 'favorit') hasilProduk = []
-    if (search && (jenis === 'preloved' || jenis === 'semua'))
-      hasilProduk = hasilProduk.filter((p: any) => p.nama?.toLowerCase().includes(search.toLowerCase()) || p.toko?.nama?.toLowerCase().includes(search.toLowerCase()))
-    if (kategori && (jenis === 'preloved' || jenis === 'semua'))
-      hasilProduk = hasilProduk.filter((p: any) => p.kategori === kategori)
-    if (sortByJarak && userLat && userLng && (jenis === 'preloved' || jenis === 'semua'))
-      hasilProduk = hasilProduk.map((p: any) => ({ ...p, jarak: p.toko?.lat && p.toko?.lng ? hitungJarak(userLat, userLng, p.toko.lat, p.toko.lng) : 9999 })).sort((a: any, b: any) => a.jarak - b.jarak)
-    setFilteredProduk(hasilProduk)
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-3 animate-pulse">
+        <div className="w-16 h-16 bg-slate-200 rounded-full" />
+        <div className="h-4 bg-slate-200 rounded w-1/3" />
+        <div className="h-3 bg-slate-200 rounded w-1/4" />
+      </div>
+    )
   }
 
-  const filteredGrouped = filtered.reduce((g: Record<string, any[]>, t: any) => { const k = t.kategori || 'Lainnya'; if (!g[k]) g[k] = []; g[k].push(t); return g }, {})
-  const produkGrouped = filteredProduk.reduce((g: Record<string, any[]>, p: any) => { const k = p.kategori || 'Lainnya'; if (!g[k]) g[k] = []; g[k].push(p); return g }, {})
-
-  const masterKategoriList = jenis === 'jasa' ? KATEGORI_JASA : jenis === 'toko' ? KATEGORI_TOKO : jenis === 'preloved' ? KATEGORI_PRELOVED : [...KATEGORI_TOKO, ...KATEGORI_JASA, ...KATEGORI_PRELOVED]
-  const masterKategoriFlat = masterKategoriList.flatMap(g => g.items)
-  const sortedTokoKeys = [...masterKategoriFlat.filter(k => filteredGrouped[k]), ...Object.keys(filteredGrouped).filter(k => !masterKategoriFlat.includes(k))]
-  const kategoriPreloved = KATEGORI_PRELOVED.flatMap(g => g.items)
-  const sortedProdukKeys = [...kategoriPreloved.filter(k => produkGrouped[k]), ...Object.keys(produkGrouped).filter(k => !kategoriPreloved.includes(k))]
-  const grupList = jenis === 'jasa' ? KATEGORI_JASA : jenis === 'toko' ? KATEGORI_TOKO : jenis === 'preloved' ? KATEGORI_PRELOVED : [...KATEGORI_TOKO, ...KATEGORI_JASA, ...KATEGORI_PRELOVED]
-  const adaHasil = jenis === 'preloved' ? filteredProduk.length > 0 : jenis === 'semua' ? filtered.length > 0 || filteredProduk.length > 0 : filtered.length > 0
-  const adaFavorit = tokoFavorit.length > 0 || produkWishlist.length > 0
+  const temaWarna = toko?.jenis === 'jasa' ? 'blue' : toko?.jenis === 'preloved' ? 'purple' : 'green'
+  const configTema = {
+    green: { bg: 'bg-green-600', hover: 'hover:bg-green-700', text: 'text-green-600', light: 'bg-green-50', badge: 'bg-emerald-50 text-emerald-700 border-emerald-100', border: 'border-green-100' },
+    blue: { bg: 'bg-blue-600', hover: 'hover:bg-blue-700', text: 'text-blue-600', light: 'bg-blue-50', badge: 'bg-blue-50 text-blue-700 border-blue-100', border: 'border-blue-100' },
+    purple: { bg: 'bg-purple-600', hover: 'hover:bg-purple-700', text: 'text-purple-600', light: 'bg-purple-50', badge: 'bg-purple-50 text-purple-700 border-purple-100', border: 'border-purple-100' },
+  }[temaWarna]
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-[#F6F9F8] pb-28 text-slate-900 font-medium antialiased">
+      
+      {/* Banner & Cover Section */}
+      <div className="relative max-w-md mx-auto bg-white border-b border-gray-100 shadow-sm">
+        <div className="h-36 w-full bg-slate-100 relative overflow-hidden">
+          {toko?.foto_url ? (
+            <img src={toko.foto_url} alt="" className="w-full h-full object-cover blur-md opacity-40 scale-115" />
+          ) : (
+            <div className={`w-full h-full ${configTema.bg} opacity-10`} />
+          )}
+          <button onClick={() => navigate(-1)} className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm shadow-md rounded-xl w-9 h-9 flex items-center justify-center border-none font-black text-gray-700 active:scale-90 transition">
+            ←
+          </button>
+        </div>
 
-      {/* Header */}
-      <div className="bg-white px-4 pt-4 pb-3 sticky top-0 z-10 shadow-sm">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <img src="/icon-192x192.png" alt="Lokaku" className="w-8 h-8 rounded-xl object-cover" />
-            <div>
-              <span className="font-extrabold text-gray-900 text-sm">Lokaku</span>
-              <p className="text-xs text-gray-400 leading-none">Temukan kebutuhan sekitar</p>
+        {/* Profile Info Card */}
+        <div className="px-4 pb-4 -mt-12 relative z-10 flex flex-col items-center text-center">
+          {toko?.foto_url ? (
+            <img src={toko.foto_url} alt={toko.nama} className="w-24 h-24 rounded-3xl object-cover ring-4 ring-white shadow-md bg-white block" />
+          ) : (
+            <div className={`w-24 h-24 rounded-3xl ring-4 ring-white shadow-md flex items-center justify-center text-4xl bg-white`}>
+              {toko?.jenis === 'jasa' ? '🛠️' : toko?.jenis === 'preloved' ? '♻️' : '🏪'}
+            </div>
+          )}
+
+          <div className="mt-3 space-y-1 w-full max-w-xs">
+            <h1 className="font-black text-lg text-slate-900 tracking-tight leading-snug flex items-center justify-center gap-1.5">
+              {toko?.nama}
+            </h1>
+            <div className="flex items-center justify-center gap-2">
+              <span className={`text-[10px] px-2.5 py-0.5 rounded-full border font-black uppercase ${configTema.badge}`}>
+                {toko?.jenis || 'Toko'}
+              </span>
+              <span className={`text-[10px] px-2.5 py-0.5 rounded-full border font-black ${toko?.is_buka ? 'bg-green-50 text-green-700 border-green-100' : 'bg-red-50 text-red-700 border-red-100'}`}>
+                {toko?.is_buka ? '🟢 Buka' : '🔴 Tutup'}
+              </span>
+            </div>
+            {toko?.alamat && <p className="text-xs text-slate-400 font-semibold mt-1">📍 {toko.alamat}</p>}
+            {toko?.deskripsi && <p className="text-xs text-slate-500 font-medium leading-relaxed mt-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100/60">{toko.deskripsi}</p>}
+          </div>
+
+          {/* Action Header Button */}
+          <div className="w-full grid grid-cols-2 gap-2 mt-4 max-w-xs">
+            <button onClick={toggleFollow} className={`w-full text-xs py-3 rounded-xl font-black transition active:scale-95 border border-transparent shadow-sm flex items-center justify-center gap-1.5 ${
+              isFollowed ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : `${configTema.bg} text-white ${configTema.hover}`
+            }`}>
+              {isFollowed ? '❤️ Diikuti' : '🤍 Ikuti'}
+            </button>
+            <a href={`https://wa.me/${toko?.whatsapp?.replace(/\D/g, '').replace(/^0/, '62')}`} target="_blank" rel="noreferrer" 
+               className="w-full text-xs py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black transition active:scale-95 shadow-sm text-center flex items-center justify-center gap-1.5">
+              💬 WhatsApp
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Grid Content */}
+      <div className="max-w-md mx-auto p-4 space-y-6">
+        
+        {/* PROMO BANNER SECTION */}
+        {promo.length > 0 && (
+          <div className="space-y-2">
+            <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Promo Khusus Toko 🎉</h2>
+            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+              {promo.map((pr: any) => (
+                <div key={pr.id} className="w-72 shrink-0 bg-gradient-to-r from-orange-500 to-amber-500 rounded-2xl p-4 text-white shadow-md relative overflow-hidden flex flex-col justify-between h-28">
+                  <div className="absolute right-[-10px] bottom-[-10px] text-6xl opacity-15 select-none">🏷️</div>
+                  <div>
+                    <h3 className="font-black text-sm tracking-tight">{pr.nama}</h3>
+                    <p className="text-[11px] opacity-90 font-medium mt-1 line-clamp-2">{pr.deskripsi}</p>
+                  </div>
+                  {pr.kode_promo && (
+                    <div className="bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-lg w-max border border-white/30">
+                      <span className="text-[10px] font-black uppercase tracking-wider">Kode: {pr.kode_promo}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
-          {userLat && (
-            <button onClick={() => setSortByJarak(!sortByJarak)}
-              className={`text-xs px-3 py-1.5 rounded-xl border-2 font-bold transition ${sortByJarak ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-500 border-gray-200'}`}>
-              📍 Terdekat
-            </button>
+        )}
+
+        {/* LIST PRODUK / LAYANAN JASA */}
+        <div className="space-y-3">
+          <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">
+            {toko?.jenis === 'jasa' ? 'Layanan & Jasa' : 'Katalog Produk'} ({produk.length})
+          </h2>
+
+          {produk.length === 0 ? (
+            <div className="bg-white border border-slate-100 rounded-3xl p-8 text-center shadow-sm space-y-2">
+              <span className="text-3xl block">📦</span>
+              <p className="text-sm font-black text-slate-800">Katalog Masih Kosong</p>
+              <p className="text-xs text-slate-400">Belum ada produk atau daftar layanan yang ditambahkan oleh pemilik usaha ini.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {produk.map((p: any) => (
+                <div key={p.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col transition duration-300 hover:shadow-md">
+                  <div className="relative aspect-square w-full bg-slate-50">
+                    {p.foto_url ? (
+                      <img src={p.foto_url} alt={p.nama} className="w-full h-full object-cover block" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-3xl bg-slate-100">📦</div>
+                    )}
+                    <button onClick={() => toggleWishlist(p.id)} className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm border-none rounded-full w-7 h-7 flex items-center justify-center cursor-pointer shadow-md text-sm active:scale-90 transition">
+                      {wishlistIds.has(p.id) ? '❤️' : '🤍'}
+                    </button>
+                  </div>
+
+                  <div className="p-3 flex-1 flex flex-col justify-between gap-2">
+                    <div className="space-y-0.5">
+                      <h3 className="font-black text-xs text-slate-900 truncate" title={p.nama}>{p.nama}</h3>
+                      <p className={`font-black text-xs ${configTema.text}`}>{formatHarga(p.harga)}</p>
+                      {p.deskripsi && <p className="text-[10px] text-slate-400 line-clamp-2 leading-relaxed mt-1 font-medium">{p.deskripsi}</p>}
+                    </div>
+
+                    <button onClick={() => navigate(`/chat/${id}`)} className={`w-full text-[10px] py-2 rounded-xl font-black text-center border active:scale-95 transition shadow-sm bg-orange-500 text-white hover:bg-orange-600 border-transparent shadow-orange-900/10`}>
+                      Pesan Sekarang 💬
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
-
-        {jenis !== 'favorit' && (
-          <div className="relative mb-3">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder={jenis === 'preloved' ? 'Cari barang preloved...' : 'Cari toko, jasa, atau barang...'}
-              className="w-full border-2 border-gray-100 rounded-xl pl-9 pr-4 py-2.5 text-sm outline-none focus:border-green-400 bg-gray-50 transition" />
-          </div>
-        )}
-
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', overflowX: 'auto', paddingBottom: '4px', msOverflowStyle: 'none' as any, scrollbarWidth: 'none' as any }}>
-          {(Object.entries(JENIS_CONFIG) as [JenisFilter, typeof JENIS_CONFIG.semua][]).map(([j, cfg]) => (
-            <button key={j} onClick={() => setJenis(j)}
-              className={`flex items-center gap-1 text-xs px-3 py-2 rounded-xl border-2 font-bold transition flex-shrink-0 ${jenis === j ? cfg.activeBg : 'bg-white text-gray-500 border-gray-100'}`}>
-              {cfg.icon} {cfg.label}
-            </button>
-          ))}
-          {jenis !== 'favorit' && (
-            <button onClick={() => setShowKategori(!showKategori)}
-              className={`flex items-center gap-1 text-xs px-3 py-2 rounded-xl border-2 font-bold transition flex-shrink-0 ${kategori ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-500 border-gray-100'}`}
-              style={{ marginLeft: 'auto' }}>
-              {kategori ? '✕ Reset' : '☰ Kategori'}
-            </button>
-          )}
-        </div>
-
-        {showKategori && jenis !== 'favorit' && (
-          <select value={kategori} onChange={e => { setKategori(e.target.value); setShowKategori(false) }}
-            className="w-full border-2 border-gray-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-400 bg-gray-50 transition mb-2">
-            <option value="">Semua Kategori</option>
-            {grupList.map(grup => (
-              <optgroup key={grup.grup} label={`── ${grup.grup}`}>
-                {grup.items.map(item => <option key={item} value={item}>{item}</option>)}
-              </optgroup>
-            ))}
-          </select>
-        )}
-        {kategori && <span className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded-full font-semibold">{kategori}</span>}
       </div>
 
-      <div className="py-4 space-y-4">
-
-        {/* TAB FAVORIT */}
-        {jenis === 'favorit' && (
-          <div className="space-y-4">
-            {!userId ? (
-              <div className="text-center py-16 px-4">
-                <p className="text-4xl mb-3">❤️</p>
-                <p className="text-gray-600 font-semibold text-sm">Login untuk melihat favorit</p>
-                <button onClick={() => navigate('/login')} className="mt-4 bg-red-500 text-white px-6 py-2.5 rounded-xl text-sm font-bold">Login</button>
-              </div>
-            ) : !adaFavorit ? (
-              <div className="text-center py-16 px-4">
-                <p className="text-4xl mb-3">🤍</p>
-                <p className="text-gray-600 font-semibold text-sm">Belum ada favorit</p>
-                <p className="text-gray-400 text-xs mt-1">Klik ikon hati di card toko atau produk untuk menyimpan</p>
-                <button onClick={() => setJenis('semua')} className="mt-4 bg-gray-900 text-white px-6 py-2.5 rounded-xl text-sm font-bold">Jelajahi Sekarang</button>
-              </div>
-            ) : (
-              <>
-                {tokoFavorit.length > 0 && (
-                  <ScrollStrip title="Toko & Jasa Langganan" icon="🏪" count={tokoFavorit.length}>
-                    {tokoFavorit.map((t: any) => (
-                      <TokoCard key={t.id} t={t} userLat={userLat} userLng={userLng}
-                        onDetail={(id: string) => navigate(`/toko/${id}`)}
-                        onChat={(id: string) => navigate(`/chat/${id}`)}
-                        isFollowed={followedIds.has(t.id)} onToggleFollow={toggleFollow} />
-                    ))}
-                  </ScrollStrip>
-                )}
-                {produkWishlist.length > 0 && (
-                  <ScrollStrip title="Produk Wishlist" icon="🛍️" count={produkWishlist.length}>
-                    {produkWishlist.map((p: any) => (
-                      <ProdukCard key={p.id} p={p} userLat={userLat} userLng={userLng}
-                        onDetail={(id: string) => navigate(`/toko/${id}`)}
-                        onChat={(id: string) => navigate(`/chat/${id}`)}
-                        isWishlisted={wishlistIds.has(p.id)} onToggleWishlist={toggleWishlist} />
-                    ))}
-                  </ScrollStrip>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* TAB SEMUA / TOKO / JASA / PRELOVED */}
-        {jenis !== 'favorit' && (
-          <>
-            {jenis === 'semua' && (
-              <div className="space-y-2">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider px-4">Promo & Event Sekitar</p>
-                <PromoSlider lat={userLat} lng={userLng} />
-              </div>
-            )}
-
-            <p className="text-xs text-gray-400 font-medium px-4">
-              {loading ? 'Memuat...' : jenis === 'semua'
-                ? `${toko.filter((t: any) => t.jenis !== 'preloved').length} toko/jasa · ${produkPreloved.length} barang preloved`
-                : jenis === 'preloved' ? `${filteredProduk.length} barang preloved`
-                : `${filtered.length} ${JENIS_CONFIG[jenis].label.toLowerCase()} aktif`}
-            </p>
-
-            {loading ? (
-              <><SkeletonStrip /><SkeletonStrip /><SkeletonStrip /></>
-            ) : !adaHasil ? (
-              <div className="text-center py-16 px-4">
-                <p className="text-4xl mb-3">{JENIS_CONFIG[jenis].icon}</p>
-                <p className="text-gray-600 font-semibold text-sm">Belum ada {JENIS_CONFIG[jenis].label.toLowerCase()} tersedia</p>
-                <p className="text-gray-400 text-xs mt-1">Coba kata kunci atau kategori lain</p>
-              </div>
-            ) : (
-              <>
-                {jenis !== 'preloved' && sortedTokoKeys.map(namaKategori => (
-                  <ScrollStrip key={namaKategori} title={namaKategori} icon={getIconKategori(jenis, filteredGrouped[namaKategori]?.[0])} count={filteredGrouped[namaKategori].length}>
-                    {filteredGrouped[namaKategori].map((t: any) => (
-                      <TokoCard key={t.id} t={t} userLat={userLat} userLng={userLng}
-                        onDetail={(id: string) => navigate(`/toko/${id}`)}
-                        onChat={(id: string) => navigate(`/chat/${id}`)}
-                        isFollowed={followedIds.has(t.id)} onToggleFollow={userId ? toggleFollow : null} />
-                    ))}
-                  </ScrollStrip>
-                ))}
-                {(jenis === 'preloved' || jenis === 'semua') && sortedProdukKeys.length > 0 && (
-                  <>
-                    {jenis === 'semua' && <div className="px-4"><p className="text-sm font-extrabold text-purple-700">♻️ Barang Preloved</p></div>}
-                    {sortedProdukKeys.map(namaKategori => (
-                      <ScrollStrip key={namaKategori} title={namaKategori} icon="♻️" count={produkGrouped[namaKategori].length}>
-                        {produkGrouped[namaKategori].map((p: any) => (
-                          <ProdukCard key={p.id} p={p} userLat={userLat} userLng={userLng}
-                            onDetail={(id: string) => navigate(`/toko/${id}`)}
-                            onChat={(id: string) => navigate(`/chat/${id}`)}
-                            isWishlisted={wishlistIds.has(p.id)} onToggleWishlist={userId ? toggleWishlist : null} />
-                        ))}
-                      </ScrollStrip>
-                    ))}
-                  </>
-                )}
-              </>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Bottom Nav */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex shadow-lg z-20">
-        <button onClick={() => navigate('/cari')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
-          <span className="text-lg">🔍</span>
-          <span className="text-xs font-bold text-red-600">Cari</span>
+      {/* Bottom Navigation Menu */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-100 flex shadow-[0_-4px_24px_rgba(0,0,0,0.04)] z-40 max-w-md mx-auto pb-safe">
+        <button onClick={() => navigate('/cari')} className="flex-1 py-3.5 flex flex-col items-center gap-1 transition active:scale-95">
+          <span className="text-lg leading-none">🔍</span>
+          <span className="text-[10px] font-bold text-gray-400">Cari</span>
         </button>
-        <button onClick={() => navigate('/peta')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
-          <span className="text-lg">🗺️</span>
-          <span className="text-xs font-medium text-gray-400">Peta</span>
+        <button onClick={() => navigate('/peta')} className="flex-1 py-3.5 flex flex-col items-center gap-1 transition active:scale-95">
+          <span className="text-lg leading-none">🗺️</span>
+          <span className="text-[10px] font-bold text-gray-400">Peta</span>
         </button>
-        <button onClick={() => navigate('/dashboard')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
-          <span className="text-lg">🏪</span>
-          <span className="text-xs font-medium text-gray-400">Toko</span>
+        <button onClick={() => navigate('/dashboard')} className="flex-1 py-3.5 flex flex-col items-center gap-1 transition active:scale-95">
+          <span className="text-lg leading-none">🏪</span>
+          <span className="text-[10px] font-black text-green-700">Toko</span>
         </button>
-        <button onClick={() => navigate('/profil')} className="flex-1 py-3 flex flex-col items-center gap-0.5">
-          <span className="text-lg">👤</span>
-          <span className="text-xs font-medium text-gray-400">Profil</span>
+        <button onClick={() => navigate('/profil')} className="flex-1 py-3.5 flex flex-col items-center gap-1 transition active:scale-95">
+          <span className="text-lg leading-none">👤</span>
+          <span className="text-[10px] font-bold text-gray-400">Profil</span>
         </button>
       </div>
+
     </div>
   )
 }
