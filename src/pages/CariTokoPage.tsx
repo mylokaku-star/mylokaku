@@ -154,7 +154,7 @@ function ProdukCard({ p, userLat, userLng, onDetail, onChat, isWishlisted, onTog
         <div className="flex flex-col gap-1.5 pt-1">
           <div className="grid grid-cols-2 gap-1.5">
             <button
-              onClick={() => onDetail(p.toko_id)}
+              onClick={() => { console.log('id:', p.toko_id, p); onDetail(p.toko_id) }}
               className="bg-purple-600 hover:bg-purple-700 text-white text-[11px] py-2 rounded-xl font-bold border-none cursor-pointer text-center transition-colors">
               Lihat Toko
             </button>
